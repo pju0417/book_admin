@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📋 독서록 채점 시스템 — 교사용</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f4f8; --paper:#ffffff; --navy:#1a2744; --green:#1e5c3a;
+  --amber:#c8860a; --amber-light:#f5e6c0; --amber-pale:#fdf5e0;
+  --red:#b33a3a; --blue:#1a5fb4; --text:#2c2c2c; --muted:#6b7280;
+  --border:#e2e8f0; --shadow:0 2px 12px rgba(26,39,68,.09); --radius:12px;
+  --ungraded:#fff8e1; --ungraded-border:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Nanum Gothic',sans-serif;background:var(--bg);min-height:100vh;color:var(--text);}
+
+/* ── Login ── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#1a2744 0%,#2d4a7a 60%,#1e5c3a 100%);}
+.login-box{background:var(--paper);border-radius:20px;padding:48px 44px;width:380px;max-width:94vw;
+  box-shadow:0 24px 80px rgba(0,0,0,.35);text-align:center;}
+.login-logo{font-size:3rem;margin-bottom:8px;}
+.login-title{font-family:'Nanum Myeongjo',serif;font-size:1.5rem;font-weight:800;color:var(--navy);margin-bottom:4px;}
+.login-sub{font-size:.83rem;color:var(--muted);margin-bottom:32px;}
+.login-box input{width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:10px;
+  font-family:'Nanum Gothic',sans-serif;font-size:.95rem;outline:none;margin-bottom:12px;background:var(--bg);}
+.login-box input:focus{border-color:var(--navy);background:#fff;}
+.login-err{font-size:.8rem;color:var(--red);margin-bottom:10px;min-height:18px;}
+.login-btn{width:100%;padding:13px;background:var(--navy);color:#fff;border:none;border-radius:10px;
+  font-family:'Nanum Gothic',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;
+  transition:background .2s;}
+.login-btn:hover{background:#243462;}
+
+/* ── App Layout ── */
+.app-wrap{display:none;}
+.app-wrap.visible{display:block;}
+
+header{background:var(--navy);color:#fff;padding:16px 28px;display:flex;align-items:center;
+  justify-content:space-between;box-shadow:0 2px 16px rgba(0,0,0,.25);
+  position:sticky;top:0;z-index:100;}
+.header-title{font-family:'Nanum Myeongjo',serif;font-size:1.3rem;font-weight:800;}
+.header-title span{color:var(--amber);}
+.header-meta{font-size:.75rem;opacity:.65;margin-top:2px;}
+.header-right{display:flex;gap:14px;align-items:center;}
+.dash-chip{text-align:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  border-radius:8px;padding:5px 14px;cursor:pointer;transition:background .2s;}
+.dash-chip:hover{background:rgba(255,255,255,.18);}
+.dash-chip-num{font-size:1.15rem;font-weight:700;color:var(--amber);}
+.dash-chip-label{font-size:.65rem;opacity:.7;}
+
+.tab-bar{display:flex;background:var(--paper);border-bottom:2px solid var(--border);padding:0 28px;overflow-x:auto;}
+.tab{padding:13px 18px;font-size:.86rem;font-weight:700;cursor:pointer;
+  border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);
+  transition:all .2s;white-space:nowrap;}
+.tab.active{color:var(--navy);border-bottom-color:var(--amber);}
+.tab:hover:not(.active){color:var(--navy);}
+.tab-badge{display:inline-block;background:var(--red);color:#fff;font-size:.6rem;
+  padding:1px 6px;border-radius:10px;margin-left:5px;vertical-align:middle;}
+
+.container{max-width:1060px;margin:0 auto;padding:28px 20px 80px;}
+.section-title{font-family:'Nanum Myeongjo',serif;font-size:1.05rem;font-weight:800;
+  color:var(--navy);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* ── Dashboard cards ── */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:28px;}
+.dash-card{background:var(--paper);border-radius:var(--radius);padding:20px 22px;
+  box-shadow:var(--shadow);border:1px solid var(--border);}
+.dash-card-num{font-size:2rem;font-weight:800;font-family:'Nanum Myeongjo',serif;}
+.dash-card-label{font-size:.78rem;color:var(--muted);margin-top:4px;}
+.dash-card.accent{background:linear-gradient(135deg,var(--navy),#2d4a7a);color:#fff;}
+.dash-card.accent .dash-card-label{opacity:.7;}
+.dash-card.warn{background:linear-gradient(135deg,#c8860a,#e8a020);color:#fff;}
+.dash-card.warn .dash-card-label{opacity:.8;}
+
+/* ── Filters ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+.filter-bar select,.filter-bar input[type=text]{
+  font-family:'Nanum Gothic',sans-serif;font-size:.85rem;
+  border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;
+  background:var(--paper);outline:none;color:var(--text);}
+.filter-bar select:focus,.filter-bar input:focus{border-color:var(--navy);}
+.filter-bar input[type=text]{min-width:180px;}
+.filter-count{font-size:.78rem;color:var(--muted);margin-left:auto;}
+
+/* ── Log cards ── */
+.log-list{display:grid;gap:12px;}
+.log-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 22px;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s;}
+.log-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(26,39,68,.12);}
+.log-card.ungraded{background:var(--ungraded);border-color:var(--ungraded-border);}
+.log-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:12px;}
+.log-student{font-family:'Nanum Myeongjo',serif;font-size:1rem;font-weight:800;color:var(--navy);}
+.log-book{font-size:.88rem;color:#444;margin-top:2px;}
+.log-meta{font-size:.76rem;color:var(--muted);margin-top:2px;}
+.log-preview{font-size:.84rem;color:#555;line-height:1.7;margin-bottom:10px;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.log-preview.expanded{display:block;}
+.log-footer{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.stars{font-size:.9rem;}
+.review-quote{font-size:.76rem;color:var(--amber);font-style:italic;}
+
+/* Badges */
+.badge{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:16px;white-space:nowrap;}
+.badge-ng{background:#fef3c7;color:#92400e;border:1px solid #f59e0b;}
+.badge-graded{background:#d1fae5;color:#065f46;border:1px solid #34d399;}
+.badge-genre{background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;}
+
+/* Grading panel */
+.grade-panel{background:#f0f7ff;border:1.5px solid #93c5fd;border-radius:10px;
+  padding:16px 18px;margin-top:14px;display:none;}
+.grade-panel.open{display:block;}
+.grade-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+.grade-row label{font-size:.78rem;font-weight:700;color:var(--navy);min-width:60px;}
+.grade-row input[type=number]{width:90px;font-family:'Nanum Gothic',sans-serif;font-size:.9rem;
+  border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;outline:none;background:#fff;}
+.grade-row input[type=number]:focus{border-color:var(--blue);}
+.grade-row input[type=text]{flex:1;min-width:200px;font-family:'Nanum Gothic',sans-serif;font-size:.88rem;
+  border:1.5px solid var(--border);border-radius:7px;padding:7px 10px;outline:none;background:#fff;}
+.grade-row input[type=text]:focus{border-color:var(--blue);}
+.grade-saved{font-size:.78rem;color:var(--green);font-weight:700;display:none;}
+.grade-saved.show{display:inline;}
+
+.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.btn{font-family:'Nanum Gothic',sans-serif;font-size:.82rem;font-weight:700;
+  padding:7px 16px;border-radius:7px;border:none;cursor:pointer;
+  transition:all .2s;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--navy);color:#fff;}
+.btn-primary:hover{background:#243462;}
+.btn-primary:disabled{background:#94a3b8;cursor:not-allowed;}
+.btn-secondary{background:var(--amber-light);color:var(--navy);border:1.5px solid var(--amber);}
+.btn-secondary:hover{background:var(--amber);color:#fff;}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#164d2f;}
+.btn-green:disabled{background:#86efac;cursor:not-allowed;}
+.btn-danger{background:#fef2f2;color:var(--red);border:1.5px solid #fca5a5;}
+.btn-danger:hover{background:var(--red);color:#fff;}
+.btn-ghost{background:none;color:var(--muted);border:1.5px solid var(--border);}
+.btn-ghost:hover{background:var(--bg);color:var(--navy);}
+.btn-sm{padding:5px 11px;font-size:.75rem;}
+
+/* ── Extra points ── */
+.extra-form{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow);margin-bottom:20px;}
+.form-row-extra{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.form-row-extra.single{grid-template-columns:1fr;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group label{font-size:.78rem;font-weight:700;color:var(--navy);}
+.form-group input,.form-group select{font-family:'Nanum Gothic',sans-serif;font-size:.88rem;
+  border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;background:var(--bg);outline:none;}
+.form-group input:focus,.form-group select:focus{border-color:var(--navy);background:#fff;}
+
+.extra-list{display:grid;gap:10px;}
+.extra-item{background:var(--paper);border:1px solid var(--border);border-radius:10px;
+  padding:14px 18px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;box-shadow:var(--shadow);}
+.extra-left{}
+.extra-student{font-weight:700;color:var(--navy);font-size:.9rem;}
+.extra-reason{font-size:.8rem;color:var(--muted);margin-top:2px;}
+.extra-comment{font-size:.78rem;color:var(--amber);font-style:italic;margin-top:2px;}
+.extra-right{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.extra-score{font-size:1.2rem;font-weight:800;color:var(--green);}
+.extra-date{font-size:.72rem;color:var(--muted);}
+
+/* ── Student leaderboard ── */
+.leader-grid{display:grid;gap:10px;}
+.leader-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 20px;display:flex;align-items:center;gap:16px;box-shadow:var(--shadow);}
+.leader-rank{font-size:1.3rem;font-weight:800;font-family:'Nanum Myeongjo',serif;
+  color:var(--muted);min-width:32px;text-align:center;}
+.leader-rank.r1{color:#c8860a;}
+.leader-rank.r2{color:#a8a9ad;}
+.leader-rank.r3{color:#cd7f32;}
+.leader-tier{width:44px;height:44px;flex-shrink:0;}
+.leader-tier svg{width:44px;height:auto;}
+.leader-info{flex:1;}
+.leader-name{font-weight:800;color:var(--navy);font-size:.95rem;}
+.leader-stats{font-size:.76rem;color:var(--muted);margin-top:3px;}
+.leader-score{font-size:1.4rem;font-weight:800;color:var(--navy);font-family:'Nanum Myeongjo',serif;}
+.tier-bar-mini{height:5px;background:#e2e8f0;border-radius:3px;margin-top:5px;overflow:hidden;}
+.tier-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+/* ── Settings ── */
+.settings-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow);margin-bottom:18px;}
+.settings-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.settings-row label{min-width:130px;font-weight:700;font-size:.83rem;color:var(--navy);}
+.settings-row input[type=text],.settings-row input[type=password]{
+  flex:1;min-width:220px;font-family:'Nanum Gothic',sans-serif;font-size:.88rem;
+  border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;background:var(--bg);outline:none;}
+.settings-row input:focus{border-color:var(--navy);background:#fff;}
+.info-box{background:var(--amber-pale);border:1px solid var(--amber);border-radius:8px;
+  padding:14px 16px;font-size:.82rem;line-height:1.7;color:#5a3e00;margin-bottom:16px;}
+
+/* ── Code block ── */
+pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-radius:8px;
+  overflow-x:auto;line-height:1.65;white-space:pre-wrap;margin-bottom:10px;}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:var(--navy);color:#fff;padding:11px 22px;border-radius:28px;
+  font-size:.85rem;font-weight:700;box-shadow:0 4px 20px rgba(0,0,0,.25);
+  z-index:500;transition:transform .28s,opacity .28s;opacity:0;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
+
+/* ── Loading ── */
+.loading{text-align:center;padding:50px 20px;color:var(--muted);}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--navy);
+  border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-icon{font-size:3rem;margin-bottom:12px;}
+
+/* 필사 카드 */
+.trans-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 22px;box-shadow:var(--shadow);margin-bottom:12px;}
+.trans-card.ungraded{background:#faf5ff;border-color:#c084fc;}
+.trans-entries{font-size:.82rem;line-height:1.75;color:#444;
+  background:var(--bg);border-radius:8px;padding:12px 14px;
+  border-left:3px solid #a855f7;margin:10px 0;white-space:pre-wrap;}
+.trans-grade-panel{background:#f5f0ff;border:1.5px solid #c084fc;border-radius:10px;
+  padding:14px 16px;margin-top:12px;display:none;}
+.trans-grade-panel.open{display:block;}
+
+/* 도서별 종합 */
+.bv-card{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 20px;box-shadow:var(--shadow);margin-bottom:12px;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;}
+.bv-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(26,39,68,.12);}
+.bv-title{font-family:'Nanum Myeongjo',serif;font-size:1rem;font-weight:800;color:var(--navy);}
+.bv-student{font-size:.82rem;color:var(--muted);margin-top:2px;}
+.bv-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+
+/* 도서 상세 모달 */
+.bv-modal-overlay{display:none;position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+.bv-modal-overlay.open{display:flex;}
+.bv-modal{background:var(--paper);border-radius:16px;width:660px;max-width:96vw;
+  max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,.35);overflow:hidden;animation:modalIn .22s ease;}
+@keyframes modalIn{from{transform:scale(.93) translateY(18px);opacity:0}to{transform:none;opacity:1}}
+.bv-modal-head{background:linear-gradient(135deg,var(--navy),#2d4a7a);color:#fff;
+  padding:20px 24px;flex-shrink:0;position:relative;}
+.bv-modal-body{overflow-y:auto;flex:1;padding:20px 24px 28px;}
+.bv-section{margin-bottom:22px;}
+.bv-section-title{font-family:'Nanum Myeongjo',serif;font-size:.95rem;font-weight:800;
+  color:var(--navy);padding-bottom:7px;border-bottom:2px solid var(--border);margin-bottom:12px;}
+.bv-log-box{background:var(--bg);border-radius:8px;padding:14px 16px;
+  border:1px solid var(--border);margin-bottom:10px;font-size:.85rem;line-height:1.8;
+  color:#333;white-space:pre-wrap;}
+.bv-tr-entry{background:var(--bg);border-left:3px solid #a855f7;border-radius:0 8px 8px 0;
+  padding:10px 14px;margin-bottom:8px;}
+.bv-tr-page{font-size:.7rem;font-weight:700;background:#7c3aed;color:#fff;
+  padding:1px 7px;border-radius:3px;margin-bottom:4px;display:inline-block;}
+.bv-tr-text{font-family:'Nanum Myeongjo',serif;font-size:.9rem;line-height:1.8;color:#2c2c2c;}
+.bv-score-box{padding:10px 14px;border-radius:8px;font-size:.83rem;margin-top:8px;}
+.bv-score-log{background:#d1fae5;border:1px solid #34d399;color:#065f46;}
+.bv-score-tr{background:#ede9fe;border:1px solid #a78bfa;color:#4c1d95;}
+.bv-no-data{color:var(--muted);font-size:.83rem;font-style:italic;padding:8px 0;}
+
+.watermark{position:fixed;bottom:10px;right:14px;font-size:.68rem;
+  color:rgba(100,90,70,.4);pointer-events:none;z-index:999;}
+
+@media(max-width:640px){
+  header{padding:12px 16px;flex-wrap:wrap;gap:8px;}
+  .tab-bar{padding:0 8px;}
+  .tab{padding:11px 12px;font-size:.8rem;}
+  .container{padding:16px 12px 70px;}
+  .dash-grid{grid-template-columns:1fr 1fr;}
+  .form-row-extra{grid-template-columns:1fr;}
+  .leader-card{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">📋</div>
+    <div class="login-title">독서록 채점 시스템</div>
+    <div class="login-sub">교사용 — 비밀번호를 입력해 주세요</div>
+    <input type="text" id="loginURL" placeholder="Google Apps Script URL" autocomplete="off">
+    <input type="password" id="loginPW" placeholder="교사 비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-err" id="loginErr"></div>
+    <button class="login-btn" onclick="doLogin()">🔐 로그인</button>
+    <div style="margin-top:18px;font-size:.75rem;color:#bbb;">
+      비밀번호는 Apps Script 코드의 TEACHER_PW와 일치해야 합니다.
+    </div>
+    <button onclick="toggleLoginCode()" style="margin-top:14px;background:none;border:1px solid #444;color:#aaa;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:.78rem;font-family:'Nanum Gothic',sans-serif;width:100%;">
+      📋 Apps Script 코드 보기 / 초기 설정
+    </button>
+    <div id="loginCodeBox" style="display:none;margin-top:12px;text-align:left;">
+      <div style="background:#2d3748;border-radius:8px;padding:12px 14px;margin-bottom:8px;">
+        <div style="color:#f59e0b;font-size:.75rem;font-weight:700;margin-bottom:6px;">⚠️ 초기 설정 방법</div>
+        <div style="color:#cbd5e0;font-size:.72rem;line-height:1.7;">
+          1. 아래 코드를 Apps Script에 붙여넣기<br>
+          2. <code style="background:#1a202c;padding:1px 5px;border-radius:3px;">TEACHER_PW</code> 값을 원하는 비밀번호로 변경<br>
+          3. 배포 → 웹 앱으로 배포 (새 배포)<br>
+          4. 생성된 URL과 설정한 비밀번호로 로그인
+        </div>
+      </div>
+      <pre id="loginScriptCode" style="font-size:.62rem;background:#1a2744;color:#f0e6cc;padding:12px;border-radius:8px;overflow-x:auto;line-height:1.55;white-space:pre-wrap;max-height:260px;overflow-y:auto;text-align:left;"></pre>
+      <button onclick="copyLoginScript()" style="margin-top:8px;width:100%;background:#c8860a;color:#fff;border:none;border-radius:7px;padding:8px;cursor:pointer;font-size:.78rem;font-weight:700;font-family:'Nanum Gothic',sans-serif;">📋 코드 복사</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="app-wrap" id="appWrap">
+  <header>
+    <div>
+      <div class="header-title">📋 독서록 <span>채점 시스템</span></div>
+      <div class="header-meta" id="headerURL">연결 중...</div>
+    </div>
+    <div class="header-right">
+      <div class="dash-chip" onclick="switchTab('grade')">
+        <div class="dash-chip-num" id="chipUngraded">—</div>
+        <div class="dash-chip-label">미채점</div>
+      </div>
+      <div class="dash-chip" onclick="switchTab('students')">
+        <div class="dash-chip-num" id="chipStudents">—</div>
+        <div class="dash-chip-label">학생 수</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="logout()" style="color:#fff;border-color:rgba(255,255,255,.3);">로그아웃</button>
+    </div>
+  </header>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('dashboard')" id="tab-dashboard">📊 대시보드</div>
+    <div class="tab" onclick="switchTab('grade')" id="tab-grade">✏️ 독서록 채점 <span class="tab-badge" id="gradeBadge" style="display:none"></span></div>
+    <div class="tab" onclick="switchTab('trans')" id="tab-trans">🖊️ 필사 채점 <span class="tab-badge" id="transBadge" style="display:none"></span></div>
+    <div class="tab" onclick="switchTab('bookview')" id="tab-bookview">📚 도서별 종합</div>
+    <div class="tab" onclick="switchTab('extra')" id="tab-extra">➕ 추가점수</div>
+    <div class="tab" onclick="switchTab('students')" id="tab-students">👥 학생 현황</div>
+    <div class="tab" onclick="switchTab('settings')" id="tab-settings">⚙️ 설정</div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="tab-panel active" id="panel-dashboard">
+  <div class="container">
+    <p class="section-title">📊 현황 요약</p>
+    <div class="dash-grid" id="dashGrid">
+      <div class="loading"><div class="spinner"></div>불러오는 중...</div>
+    </div>
+
+    <p class="section-title">🔔 미채점 독서록</p>
+    <div id="dashUngraded"></div>
+
+    <p class="section-title" style="margin-top:20px;">🏆 상위 학생</p>
+    <div id="dashTop"></div>
+  </div>
+  </div>
+
+  <!-- GRADE -->
+  <div class="tab-panel" id="panel-grade">
+  <div class="container">
+    <div class="filter-bar">
+      <select id="filterStudent" onchange="applyFilter()">
+        <option value="">전체 학생</option>
+      </select>
+      <select id="filterStatus" onchange="applyFilter()">
+        <option value="">전체 상태</option>
+        <option value="ungraded">미채점만</option>
+        <option value="graded">채점완료만</option>
+      </select>
+      <input type="text" id="filterSearch" placeholder="책 제목 검색..." oninput="applyFilter()">
+      <button class="btn btn-secondary btn-sm" onclick="loadAll()">🔄 새로고침</button>
+      <span class="filter-count" id="filterCount"></span>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="loading"><div class="spinner"></div>독서록 불러오는 중...</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- TRANS (필사 채점) -->
+  <div class="tab-panel" id="panel-trans">
+  <div class="container">
+    <div class="filter-bar">
+      <select id="filterTransStudent" onchange="applyTransFilter()">
+        <option value="">전체 학생</option>
+      </select>
+      <select id="filterTransStatus" onchange="applyTransFilter()">
+        <option value="">전체 상태</option>
+        <option value="ungraded">미채점만</option>
+        <option value="graded">채점완료만</option>
+      </select>
+      <input type="text" id="filterTransSearch" placeholder="책 제목 검색..." oninput="applyTransFilter()">
+      <button class="btn btn-secondary btn-sm" onclick="loadAll()">🔄 새로고침</button>
+      <span class="filter-count" id="transFilterCount"></span>
+    </div>
+    <div class="log-list" id="transList">
+      <div class="loading"><div class="spinner"></div>필사 불러오는 중...</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- BOOKVIEW (도서별 종합) -->
+  <div class="tab-panel" id="panel-bookview">
+  <div class="container">
+    <p class="section-title">📚 도서별 종합 현황</p>
+    <div class="filter-bar" style="margin-bottom:16px;">
+      <select id="filterBVStudent" onchange="renderBookView()">
+        <option value="">전체 학생</option>
+      </select>
+      <input type="text" id="filterBVBook" placeholder="책 제목 검색..." oninput="renderBookView()" style="flex:1;">
+    </div>
+    <div id="bookViewGrid"></div>
+  </div>
+  </div>
+
+  <!-- EXTRA -->
+  <div class="tab-panel" id="panel-extra">
+  <div class="container">
+    <p class="section-title">➕ 추가 점수 부여</p>
+    <div class="extra-form">
+      <div class="form-row-extra">
+        <div class="form-group">
+          <label>학생 이름 *</label>
+          <select id="extraStudent">
+            <option value="">학생 선택...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>점수 *</label>
+          <input type="number" id="extraScore" min="1" max="100" placeholder="예) 5">
+        </div>
+      </div>
+      <div class="form-row-extra">
+        <div class="form-group">
+          <label>사유 *</label>
+          <input type="text" id="extraReason" placeholder="예) 독서퀴즈 1위, 책 추천 보고서 제출">
+        </div>
+        <div class="form-group">
+          <label>날짜</label>
+          <input type="date" id="extraDate">
+        </div>
+      </div>
+      <div class="form-row-extra single">
+        <div class="form-group">
+          <label>코멘트 (선택)</label>
+          <input type="text" id="extraComment" placeholder="추가 설명이 있다면 입력해 주세요">
+        </div>
+      </div>
+      <button class="btn btn-green" onclick="addExtraScore()">✅ 추가점수 저장</button>
+    </div>
+
+    <p class="section-title">📋 추가점수 기록</p>
+    <div class="extra-list" id="extraList">
+      <div class="loading"><div class="spinner"></div>불러오는 중...</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="tab-panel" id="panel-students">
+  <div class="container">
+    <p class="section-title">👥 학생 현황 — 점수 순위</p>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+      <select id="resetStudentSelect" style="font-family:'Nanum Gothic',sans-serif;font-size:.85rem;border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--paper);outline:none;min-width:200px;">
+        <option value="">학생 선택...</option>
+      </select>
+      <button class="btn btn-danger btn-sm" onclick="resetStudentScore()">🗑️ 선택 학생 점수 초기화</button>
+      <button class="btn btn-danger btn-sm" onclick="resetAllScores()" style="margin-left:auto;">⚠️ 전체 점수 초기화</button>
+    </div>
+    <div class="leader-grid" id="leaderGrid">
+      <div class="loading"><div class="spinner"></div>불러오는 중...</div>
+    </div>
+  </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tab-panel" id="panel-settings">
+  <div class="container">
+    <p class="section-title">⚙️ 연결 설정</p>
+    <div class="settings-card">
+      <div class="settings-row">
+        <label>Apps Script URL</label>
+        <input type="text" id="settingURL" placeholder="배포된 웹 앱 URL">
+      </div>
+      <div class="settings-row">
+        <label>교사 비밀번호</label>
+        <input type="password" id="settingPW" placeholder="Apps Script의 TEACHER_PW와 동일">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">✅ 설정 저장</button>
+    </div>
+
+    <p class="section-title">📋 Apps Script 코드 (업데이트 버전)</p>
+    <div class="info-box">
+      ⚠️ 기존 Apps Script 코드를 아래 코드로 <strong>교체</strong>하고 다시 배포해야 교사 앱이 정상 작동합니다.<br>
+      배포 시 <code>TEACHER_PW</code> 상수를 원하는 비밀번호로 변경하세요.
+    </div>
+    <pre class="code" id="scriptCode"></pre>
+    <button class="btn btn-secondary" onclick="copyScript()">📋 코드 복사</button>
+  </div>
+  </div>
+</div>
+
+<!-- 도서별 상세 모달 -->
+<div class="bv-modal-overlay" id="bvModal">
+  <div class="bv-modal">
+    <div class="bv-modal-head">
+      <div style="font-family:'Nanum Myeongjo',serif;font-size:1.15rem;font-weight:800;" id="bvModalTitle"></div>
+      <div style="font-size:.8rem;opacity:.7;margin-top:3px;" id="bvModalSub"></div>
+      <button onclick="closeBVModal()" style="position:absolute;top:16px;right:18px;background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;">✕</button>
+    </div>
+    <div class="bv-modal-body" id="bvModalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="watermark">made by 박선생</div>
+
+<script>
+// ══ TIERS (학생 앱과 동일) ══
+const TIERS=[
+  {name:'아이언',       min:0,   max:29,  color:'#8e9eab', next:30},
+  {name:'브론즈',       min:30,  max:79,  color:'#cd7f32', next:80},
+  {name:'실버',         min:80,  max:149, color:'#a8a9ad', next:150},
+  {name:'골드',         min:150, max:239, color:'#c8860a', next:240},
+  {name:'다이아',       min:240, max:339, color:'#4fc3f7', next:340},
+  {name:'마스터',       min:340, max:429, color:'#9c27b0', next:430},
+  {name:'그랜드마스터', min:430, max:499, color:'#e91e63', next:500},
+  {name:'엠퍼러',       min:500, max:Infinity, color:'#ff4500', next:null},
+];
+function getTier(score){return TIERS.slice().reverse().find(t=>score>=t.min)||TIERS[0];}
+
+const TIER_SVGS={
+  '아이언':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g_iron" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#8fa0b2"/><stop offset="100%" stop-color="#3a4c5c"/></linearGradient></defs>
+  <path d="M32 3L61 16L61 42C61 58 32 72 32 72C32 72 3 58 3 42L3 16Z" fill="url(#g_iron)" stroke="#6a828e" stroke-width="2"/>
+  <path d="M32 10L54 21L54 41C54 53 32 65 32 65C32 65 10 53 10 41L10 21Z" fill="#293847"/>
+  <rect x="20" y="25" width="24" height="3" rx="1.5" fill="#8aa2b6"/>
+  <rect x="29" y="28" width="6" height="16" rx="1" fill="#8aa2b6"/>
+  <rect x="20" y="44" width="24" height="3" rx="1.5" fill="#8aa2b6"/>
+</svg>`,
+  '브론즈':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g_bronze" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#e09c52"/><stop offset="100%" stop-color="#7a3e0e"/></linearGradient></defs>
+  <path d="M32 3L61 16L61 42C61 58 32 72 32 72C32 72 3 58 3 42L3 16Z" fill="url(#g_bronze)" stroke="#b06820" stroke-width="2"/>
+  <path d="M32 10L54 21L54 41C54 53 32 65 32 65C32 65 10 53 10 41L10 21Z" fill="#4e2208"/>
+  <polyline points="16,46,32,30,48,46" stroke="#e09c52" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="16,56,32,40,48,56" stroke="#c07830" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".65"/>
+</svg>`,
+  '실버':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g_silver" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#dce8f0"/><stop offset="100%" stop-color="#687e90"/></linearGradient></defs>
+  <path d="M32 3L61 16L61 42C61 58 32 72 32 72C32 72 3 58 3 42L3 16Z" fill="url(#g_silver)" stroke="#9ab0c2" stroke-width="2"/>
+  <path d="M32 10L54 21L54 41C54 53 32 65 32 65C32 65 10 53 10 41L10 21Z" fill="#3a5060"/>
+  <path d="M32 22L35.5 32.5L47 35L35.5 37.5L32 48L28.5 37.5L17 35L28.5 32.5Z" fill="#c8dcea" stroke="#e0f0ff" stroke-width=".8"/>
+  <circle cx="32" cy="35" r="3.5" fill="white" opacity=".75"/>
+</svg>`,
+  '골드':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g_gold" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#f7d565"/><stop offset="100%" stop-color="#9a5a06"/></linearGradient></defs>
+  <path d="M32 3L61 16L61 42C61 58 32 72 32 72C32 72 3 58 3 42L3 16Z" fill="url(#g_gold)" stroke="#c89022" stroke-width="2"/>
+  <path d="M32 8L57 19L57 41C57 56 32 70 32 70C32 70 7 56 7 41L7 19Z" fill="none" stroke="#f7d565" stroke-width=".7" opacity=".5"/>
+  <path d="M32 10L54 21L54 41C54 53 32 65 32 65C32 65 10 53 10 41L10 21Z" fill="#613606"/>
+  <path d="M32 20L34.8 29.2L44.5 27L37.2 33.5L44.5 40L34.8 37.8L32 47L29.2 37.8L19.5 40L26.8 33.5L19.5 27L29.2 29.2Z" fill="#f7d565" stroke="#ffe590" stroke-width=".6"/>
+  <circle cx="32" cy="33.5" r="4" fill="white" opacity=".6"/>
+</svg>`,
+  '다이아':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_dia" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#90eaff"/><stop offset="100%" stop-color="#0870b8"/></linearGradient>
+    <linearGradient id="g_dia2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="white" stop-opacity=".4"/><stop offset="100%" stop-color="#0070b0" stop-opacity=".1"/></linearGradient>
+  </defs>
+  <path d="M32 3L61 32L32 71L3 32Z" fill="url(#g_dia)" stroke="#50d0ff" stroke-width="1.5"/>
+  <path d="M32 3L61 32L32 32Z" fill="url(#g_dia2)"/>
+  <path d="M32 3L3 32L32 32Z" fill="white" opacity=".18"/>
+  <line x1="32" y1="3" x2="32" y2="71" stroke="white" stroke-width=".6" opacity=".3"/>
+  <line x1="3" y1="32" x2="61" y2="32" stroke="white" stroke-width=".6" opacity=".25"/>
+  <line x1="18" y1="18" x2="46" y2="46" stroke="white" stroke-width=".4" opacity=".2"/>
+  <line x1="46" y1="18" x2="18" y2="46" stroke="white" stroke-width=".4" opacity=".2"/>
+  <circle cx="32" cy="32" r="5" fill="white" opacity=".5"/>
+</svg>`,
+  '마스터':`<svg viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_master" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#c868f0"/><stop offset="100%" stop-color="#4c1082"/></linearGradient>
+    <radialGradient id="r_master" cx="40%" cy="35%"><stop offset="0%" stop-color="#f0b0ff"/><stop offset="100%" stop-color="#7820c0"/></radialGradient>
+  </defs>
+  <path d="M32 3L61 16L61 42C61 58 32 72 32 72C32 72 3 58 3 42L3 16Z" fill="url(#g_master)" stroke="#9030c2" stroke-width="2"/>
+  <path d="M32 10L54 21L54 41C54 53 32 65 32 65C32 65 10 53 10 41L10 21Z" fill="#2a0852"/>
+  <circle cx="32" cy="37" r="14" fill="url(#r_master)"/>
+  <circle cx="28" cy="32" r="4.5" fill="white" opacity=".35"/>
+  <circle cx="32" cy="37" r="14" fill="none" stroke="#d888ff" stroke-width="1.5"/>
+  <line x1="32" y1="20" x2="32" y2="23" stroke="#c060e8" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="45" y1="24" x2="43" y2="26" stroke="#c060e8" stroke-width="2" stroke-linecap="round"/>
+  <line x1="19" y1="24" x2="21" y2="26" stroke="#c060e8" stroke-width="2" stroke-linecap="round"/>
+</svg>`,
+  '그랜드마스터':`<svg viewBox="0 0 64 78" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g_gm" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#f05878"/><stop offset="100%" stop-color="#800022"/></linearGradient></defs>
+  <polyline points="16,26,20,12,27,23,32,7,37,23,44,12,48,26" stroke="#f05878" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="20" cy="12" r="3.5" fill="#ff8090"/>
+  <circle cx="32" cy="7" r="3.5" fill="#ff8090"/>
+  <circle cx="44" cy="12" r="3.5" fill="#ff8090"/>
+  <path d="M14 26L4 33L4 53C4 66 32 78 32 78C32 78 60 66 60 53L60 33L50 26Z" fill="url(#g_gm)" stroke="#d02040" stroke-width="2"/>
+  <path d="M18 29L8 36L8 52C8 62 32 73 32 73C32 73 56 62 56 52L56 36L46 29Z" fill="#520012"/>
+  <path d="M32 38L35 44.5L42 44.5L37 49L39 56L32 52L25 56L27 49L22 44.5L29 44.5Z" fill="#f05878" stroke="#ff90a0" stroke-width=".6"/>
+</svg>`,
+  '엠퍼러':`<svg viewBox="0 0 72 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g_emp" x1="0" y1="0" x2=".5" y2="1"><stop offset="0%" stop-color="#ffb848"/><stop offset="100%" stop-color="#a03200"/></linearGradient>
+    <radialGradient id="r_emp" cx="50%" cy="50%"><stop offset="0%" stop-color="#fff0a0"/><stop offset="60%" stop-color="#ff9020"/><stop offset="100%" stop-color="#c04000"/></radialGradient>
+  </defs>
+  <path d="M8 46C2 38 0 26 7 20C11 24 14 34 17 42Z" fill="#ff8822" opacity=".75"/>
+  <path d="M64 46C70 38 72 26 65 20C61 24 58 34 55 42Z" fill="#ff8822" opacity=".75"/>
+  <polyline points="20,22,24,9,30,20,36,5,42,20,48,9,52,22" stroke="#ffd040" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="24" cy="9" r="4" fill="#ffe060"/>
+  <circle cx="36" cy="5" r="4.5" fill="#ffe060"/>
+  <circle cx="48" cy="9" r="4" fill="#ffe060"/>
+  <path d="M18 22L4 33L4 54C4 68 36 80 36 80C36 80 68 68 68 54L68 33L54 22Z" fill="url(#g_emp)" stroke="#ff9020" stroke-width="2"/>
+  <path d="M22 26L8 36L8 53C8 64 36 75 36 75C36 75 64 64 64 53L64 36L50 26Z" fill="#602200"/>
+  <circle cx="36" cy="52" r="14" fill="url(#r_emp)"/>
+  <circle cx="36" cy="52" r="6.5" fill="#ffe090"/>
+  <circle cx="36" cy="52" r="3" fill="white"/>
+  <line x1="36" y1="35" x2="36" y2="39" stroke="#ffd040" stroke-width="2" stroke-linecap="round"/>
+  <line x1="36" y1="65" x2="36" y2="69" stroke="#ffd040" stroke-width="2" stroke-linecap="round"/>
+  <line x1="19" y1="52" x2="23" y2="52" stroke="#ffd040" stroke-width="2" stroke-linecap="round"/>
+  <line x1="49" y1="52" x2="53" y2="52" stroke="#ffd040" stroke-width="2" stroke-linecap="round"/>
+  <line x1="24" y1="41" x2="27" y2="44" stroke="#ffd040" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="45" y1="60" x2="48" y2="63" stroke="#ffd040" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="48" y1="41" x2="45" y2="44" stroke="#ffd040" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="24" y1="63" x2="27" y2="60" stroke="#ffd040" stroke-width="1.5" stroke-linecap="round"/>
+</svg>`
+};
+
+function getTierSVG(name,size=44){
+  const svg=TIER_SVGS[name];
+  if(!svg)return `<span style="font-size:${size*0.6}px">?</span>`;
+  return svg.replace('<svg ','<svg width="'+size+'" ');
+}
+
+// ══ STATE ══
+let cfg={url:'',pw:''};
+let allLogs=[], extraData=[], allTranscriptions=[], studentScores={};
+
+// ══ INIT ══
+window.onload=()=>{
+  const saved=localStorage.getItem('teacher_cfg');
+  if(saved){try{cfg=JSON.parse(saved);}catch(e){}}
+  if(cfg.url&&cfg.pw){
+    document.getElementById('loginURL').value=cfg.url;
+    document.getElementById('loginPW').value=cfg.pw;
+  }
+  initScriptCode();
+  document.getElementById('loginScriptCode').textContent=
+    document.getElementById('scriptCode').textContent;
+
+  // Auto-login if credentials stored
+  if(cfg.url&&cfg.pw){tryLogin(cfg.url,cfg.pw,true);}
+
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('extraDate').value=today;
+};
+
+function toggleLoginCode(){
+  const box=document.getElementById('loginCodeBox');
+  box.style.display=box.style.display==='none'?'block':'none';
+}
+function copyLoginScript(){
+  navigator.clipboard.writeText(document.getElementById('loginScriptCode').textContent)
+    .then(()=>{
+      const btn=event.target;
+      btn.textContent='✅ 복사됨!';
+      setTimeout(()=>btn.textContent='📋 코드 복사',1800);
+    });
+}
+
+// ══ LOGIN ══
+// ══ JSONP (CORS 우회) ══
+function jsonpFetch(url){
+  return new Promise((resolve,reject)=>{
+    const cb='_cb'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const script=document.createElement('script');
+    const timer=setTimeout(()=>{
+      cleanup();reject(new Error('timeout'));
+    },20000);
+    function cleanup(){
+      clearTimeout(timer);
+      delete window[cb];
+      if(script.parentNode)script.parentNode.removeChild(script);
+    }
+    window[cb]=function(data){cleanup();resolve(data);};
+    script.src=url+(url.includes('?')?'&':'?')+'callback='+cb;
+    script.onerror=()=>{cleanup();reject(new Error('network error'));};
+    document.head.appendChild(script);
+  });
+}
+
+async function doLogin(){
+  const url=document.getElementById('loginURL').value.trim();
+  const pw=document.getElementById('loginPW').value.trim();
+  if(!url){setLoginErr('URL을 입력해주세요.');return;}
+  if(!pw){setLoginErr('비밀번호를 입력해주세요.');return;}
+  document.getElementById('loginErr').textContent='🔄 연결 중...';
+  await tryLogin(url,pw,false);
+}
+async function tryLogin(url,pw,silent){
+  try{
+    const data=await jsonpFetch(url+'?mode=ping&pw='+encodeURIComponent(pw));
+    if(data.result==='ok'||data.result==='pong'){
+      cfg={url,pw};
+      localStorage.setItem('teacher_cfg',JSON.stringify(cfg));
+      showApp();
+    }else{
+      if(!silent)setLoginErr('비밀번호가 올바르지 않습니다.');
+    }
+  }catch(e){
+    if(!silent)setLoginErr('연결 실패: URL을 확인해주세요.');
+  }
+}
+function setLoginErr(msg){document.getElementById('loginErr').textContent=msg;}
+function showApp(){
+  document.getElementById('loginWrap').style.display='none';
+  document.getElementById('appWrap').classList.add('visible');
+  const short=cfg.url.length>50?cfg.url.substring(0,50)+'…':cfg.url;
+  document.getElementById('headerURL').textContent=short;
+  document.getElementById('settingURL').value=cfg.url;
+  document.getElementById('settingPW').value=cfg.pw;
+  loadAll();
+}
+function logout(){
+  if(!confirm('로그아웃 하시겠습니까?'))return;
+  document.getElementById('loginWrap').style.display='';
+  document.getElementById('appWrap').classList.remove('visible');
+}
+
+// ══ TABS ══
+function switchTab(id){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+  if(id==='dashboard')renderDashboard();
+  if(id==='grade'){renderLogList();updateFilterStudents();}
+  if(id==='trans'){renderTransList();updateTransStudents();}
+  if(id==='bookview'){renderBookView();updateBVStudents();}
+  if(id==='extra'){renderExtraList();updateExtraStudents();}
+  if(id==='students')renderLeaderboard();
+}
+
+// ══ LOAD ALL DATA ══
+async function loadAll(){
+  try{
+    const [allLogs2,extraData2,allTrans2]=await Promise.all([
+      jsonpFetch(cfg.url+'?mode=all&pw='+encodeURIComponent(cfg.pw)),
+      jsonpFetch(cfg.url+'?mode=extras&pw='+encodeURIComponent(cfg.pw)),
+      jsonpFetch(cfg.url+'?mode=allTrans&pw='+encodeURIComponent(cfg.pw))
+    ]);
+    allLogs=allLogs2;
+    extraData=extraData2;
+    allTranscriptions=allTrans2;
+    buildStudentScores();
+    updateHeaderChips();
+    renderDashboard();
+    renderLogList();
+    renderTransList();
+    renderExtraList();
+    renderLeaderboard();
+    updateFilterStudents();
+    updateExtraStudents();
+    updateTransStudents();
+    updateBVStudents();
+  }catch(e){showToast('❌ 데이터 불러오기 실패: '+e.message,'error');}
+}
+
+function buildStudentScores(){
+  studentScores={};
+  allLogs.forEach(l=>{
+    if(!l.student)return;
+    if(!studentScores[l.student])studentScores[l.student]={score:0,logCount:0,gradedCount:0,trCount:0};
+    studentScores[l.student].logCount++;
+    if(l.score!==''&&l.score!=null){studentScores[l.student].score+=Number(l.score)||0;studentScores[l.student].gradedCount++;}
+  });
+  allTranscriptions.forEach(t=>{
+    if(!t.student)return;
+    if(!studentScores[t.student])studentScores[t.student]={score:0,logCount:0,gradedCount:0,trCount:0};
+    studentScores[t.student].trCount++;
+    if(t.score!==''&&t.score!=null)studentScores[t.student].score+=Number(t.score)||0;
+  });
+  extraData.forEach(e=>{
+    if(!e.student)return;
+    if(!studentScores[e.student])studentScores[e.student]={score:0,logCount:0,gradedCount:0,trCount:0};
+    studentScores[e.student].score+=Number(e.score)||0;
+  });
+}
+
+function updateHeaderChips(){
+  const ungraded=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).length;
+  const students=Object.keys(studentScores).length;
+  const transUngraded=allTranscriptions.filter(t=>t.score===''||t.score===null||t.score===undefined).length;
+  document.getElementById('chipUngraded').textContent=ungraded;
+  document.getElementById('chipStudents').textContent=students;
+  const badge=document.getElementById('gradeBadge');
+  if(ungraded>0){badge.textContent=ungraded;badge.style.display='inline';}else badge.style.display='none';
+  const tbadge=document.getElementById('transBadge');
+  if(transUngraded>0){tbadge.textContent=transUngraded;tbadge.style.display='inline';}else tbadge.style.display='none';
+}
+
+// ══ DASHBOARD ══
+function renderDashboard(){
+  const total=allLogs.length;
+  const ungraded=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).length;
+  const graded=total-ungraded;
+  const students=Object.keys(studentScores).length;
+  const extras=extraData.length;
+
+  document.getElementById('dashGrid').innerHTML=`
+    <div class="dash-card accent">
+      <div class="dash-card-num">${total}</div>
+      <div class="dash-card-label">📚 총 제출 독서록</div>
+    </div>
+    <div class="dash-card warn">
+      <div class="dash-card-num">${ungraded}</div>
+      <div class="dash-card-label">🔔 미채점</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-num" style="color:var(--green)">${graded}</div>
+      <div class="dash-card-label">✅ 채점완료</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-num" style="color:var(--navy)">${students}</div>
+      <div class="dash-card-label">👥 참여 학생 수</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-num" style="color:var(--blue)">${extras}</div>
+      <div class="dash-card-label">➕ 추가점수 기록</div>
+    </div>
+    <div class="dash-card">
+      <div class="dash-card-num" style="color:var(--amber)">${total?Math.round(graded/total*100):0}%</div>
+      <div class="dash-card-label">📊 채점률</div>
+    </div>`;
+
+  // Ungraded list (최신순 5개) - 대시보드는 링크만, 채점은 채점 탭에서
+  const ungradedLogs=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).slice(0,5);
+  const dU=document.getElementById('dashUngraded');
+  if(!ungradedLogs.length){
+    dU.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><p>미채점 독서록이 없습니다!</p></div>`;
+  }else{
+    dU.innerHTML=`<div class="log-list">${ungradedLogs.map(l=>{
+      const period=l.startDate?(l.startDate===l.endDate?l.startDate:`${l.startDate}~${l.endDate||''}`):(l.date||'');
+      const stars='⭐'.repeat(Number(l.stars)||0)||'—';
+      return `<div class="log-card ungraded" style="cursor:pointer;" onclick="switchTab('grade');document.getElementById('filterStudent').value='${esc(l.student)}';applyFilter();">
+        <div class="log-card-top">
+          <div>
+            <div class="log-student">${esc(l.student)}</div>
+            <div class="log-book">📖 ${esc(l.title)}${l.author?' · '+esc(l.author):''}</div>
+            <div class="log-meta">${period}${l.genre?' · '+esc(l.genre):''}${l.sentAt?' · 제출: '+l.sentAt.substring(0,10):''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+            <span class="badge badge-ng">🔔 미채점</span>
+          </div>
+        </div>
+        <div class="log-footer">
+          <span class="stars">${stars}</span>
+          ${l.review?`<span class="review-quote">"${esc(l.review)}"</span>`:''}
+        </div>
+        <div style="font-size:.75rem;color:var(--blue);margin-top:8px;">👆 클릭하면 채점 탭으로 이동합니다</div>
+      </div>`;
+    }).join('')}</div>
+    ${ungraded>5?`<div style="text-align:center;margin-top:10px;"><button class="btn btn-secondary btn-sm" onclick="switchTab('grade');document.getElementById('filterStatus').value='ungraded';applyFilter();">전체 ${ungraded}건 채점하러 가기 →</button></div>`:''}`;
+  }
+
+  // Top 5 students
+  const sorted=Object.entries(studentScores).sort((a,b)=>b[1].score-a[1].score).slice(0,5);
+  const dT=document.getElementById('dashTop');
+  if(!sorted.length){dT.innerHTML=`<div class="empty"><p>데이터가 없습니다.</p></div>`;return;}
+  dT.innerHTML=`<div class="leader-grid">${sorted.map(([name,info],i)=>{
+    const tier=getTier(info.score);
+    return `<div class="leader-card">
+      <div class="leader-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</div>
+      <div class="leader-tier">${getTierSVG(tier.name,42)}</div>
+      <div class="leader-info">
+        <div class="leader-name">${esc(name)}</div>
+        <div class="leader-stats">${tier.name} · 독서록 ${info.logCount}편</div>
+        <div class="tier-bar-mini"><div class="tier-bar-fill" style="width:${tier.next?Math.min(100,(info.score-tier.min)/(tier.next-tier.min)*100):100}%;background:${tier.color};"></div></div>
+      </div>
+      <div class="leader-score">${info.score}점</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ══ 필사 채점 ══
+function updateTransStudents(){
+  const names=[...new Set(allTranscriptions.map(t=>t.student).filter(Boolean))].sort();
+  const sel=document.getElementById('filterTransStudent');
+  sel.innerHTML=`<option value="">전체 학생</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+
+function applyTransFilter(){
+  const student=document.getElementById('filterTransStudent').value;
+  const status=document.getElementById('filterTransStatus').value;
+  const search=document.getElementById('filterTransSearch').value.toLowerCase();
+  const filtered=allTranscriptions.filter(t=>{
+    if(student&&t.student!==student)return false;
+    const ungraded=t.score===''||t.score===null||t.score===undefined;
+    if(status==='ungraded'&&!ungraded)return false;
+    if(status==='graded'&&ungraded)return false;
+    if(search&&!(t.title||'').toLowerCase().includes(search))return false;
+    return true;
+  });
+  document.getElementById('transFilterCount').textContent=`${filtered.length}건`;
+  renderTransCards(filtered);
+}
+
+function renderTransList(){
+  document.getElementById('transFilterCount').textContent=`${allTranscriptions.length}건`;
+  renderTransCards(allTranscriptions);
+}
+
+function renderTransCards(list){
+  const el=document.getElementById('transList');
+  if(!list.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>필사 데이터가 없습니다.</p></div>`;return;}
+  el.innerHTML=list.map(t=>{
+    const isUngraded=t.score===''||t.score===null||t.score===undefined;
+    const entries=Array.isArray(t.entries)?t.entries:[];
+    const entriesHTML=entries.map(e=>`${e.page?`[p.${e.page}] `:''}${e.text}`).join('\n\n');
+    return `<div class="trans-card${isUngraded?' ungraded':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div class="log-student">${esc(t.student)}</div>
+          <div class="log-book">📖 ${esc(t.title)}${t.author?' · '+esc(t.author):''}</div>
+          <div class="log-meta">필사 ${entries.length}개 · 제출: ${t.sentAt||''}</div>
+        </div>
+        <span class="badge ${isUngraded?'badge-ng':'badge-graded'}">${isUngraded?'🔔 미채점':'✅ '+t.score+'점'}</span>
+      </div>
+      <div class="trans-entries">${esc(entriesHTML)}</div>
+      <div class="card-actions">
+        <button class="btn btn-primary btn-sm" onclick="toggleTransGrade('${t.row}')">✏️ ${isUngraded?'채점하기':'수정'}</button>
+        ${!isUngraded?`<span style="font-size:.78rem;color:var(--muted);">코멘트: ${esc(t.comment||'—')}</span>`:''}
+      </div>
+      <div class="trans-grade-panel" id="tgp_${t.row}">
+        <div class="grade-row">
+          <label>점수</label>
+          <input type="number" id="tgs_${t.row}" min="0" max="100" value="${t.score||''}" placeholder="0~100">
+          <label style="margin-left:10px;">코멘트</label>
+          <input type="text" id="tgc_${t.row}" value="${esc(t.comment||'')}" placeholder="학생에게 전달할 코멘트">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-green btn-sm" onclick="submitTransGrade('${t.row}')">💾 저장</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleTransGrade('${t.row}')">취소</button>
+          <span class="grade-saved" id="tsaved_${t.row}">✅ 저장됨</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTransGrade(row){
+  const gp=document.getElementById('tgp_'+row);
+  if(gp)gp.classList.toggle('open');
+}
+
+async function submitTransGrade(row){
+  const score=document.getElementById('tgs_'+row).value;
+  const comment=document.getElementById('tgc_'+row).value;
+  if(score===''){showToast('❌ 점수를 입력해주세요.','error');return;}
+  const btn=document.querySelector(`#tgp_${row} .btn-green`);
+  btn.disabled=true;btn.textContent='💾 저장 중...';
+  try{
+    const res=await jsonpFetch(`${cfg.url}?mode=updateTrans&pw=${encodeURIComponent(cfg.pw)}&row=${row}&score=${encodeURIComponent(score)}&comment=${encodeURIComponent(comment)}`);
+    const data=res;
+    if(data.result==='ok'){
+      const t=allTranscriptions.find(x=>String(x.row)===String(row));
+      if(t){t.score=Number(score);t.comment=comment;}
+      buildStudentScores();updateHeaderChips();
+      const saved=document.getElementById('tsaved_'+row);
+      if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
+      document.getElementById('tgp_'+row).classList.remove('open');
+      showToast('✅ 필사 점수 저장 완료!','success');
+    }else{showToast('❌ 저장 실패: '+data.message,'error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='💾 저장';}
+}
+
+// ══ 도서별 종합 ══
+function updateBVStudents(){
+  const names=[...new Set([...allLogs,...allTranscriptions].map(x=>x.student).filter(Boolean))].sort();
+  const sel=document.getElementById('filterBVStudent');
+  sel.innerHTML=`<option value="">전체 학생</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+
+function renderBookView(){
+  const student=document.getElementById('filterBVStudent').value;
+  const search=document.getElementById('filterBVBook').value.toLowerCase();
+
+  // 모든 책 목록 (학생+제목 키)
+  const bookMap=new Map();
+  allLogs.forEach(l=>{
+    if(!l.title)return;
+    if(student&&l.student!==student)return;
+    if(search&&!l.title.toLowerCase().includes(search))return;
+    const key=l.student+'::'+l.title;
+    if(!bookMap.has(key))bookMap.set(key,{student:l.student,title:l.title,author:l.author||'',logs:[],trans:[]});
+    bookMap.get(key).logs.push(l);
+  });
+  allTranscriptions.forEach(t=>{
+    if(!t.title)return;
+    if(student&&t.student!==student)return;
+    if(search&&!t.title.toLowerCase().includes(search))return;
+    const key=t.student+'::'+t.title;
+    if(!bookMap.has(key))bookMap.set(key,{student:t.student,title:t.title,author:t.author||'',logs:[],trans:[]});
+    bookMap.get(key).trans.push(t);
+  });
+
+  const el=document.getElementById('bookViewGrid');
+  if(!bookMap.size){el.innerHTML=`<div class="empty"><div class="empty-icon">📚</div><p>해당하는 도서가 없습니다.</p></div>`;return;}
+
+  el.innerHTML=[...bookMap.values()].map(b=>{
+    const logGraded=b.logs.filter(l=>l.score!==''&&l.score!=null).length;
+    const trGraded=b.trans.filter(t=>t.score!==''&&t.score!=null).length;
+    const tags=[];
+    if(b.logs.length)tags.push(`<span class="badge ${logGraded<b.logs.length?'badge-ng':'badge-graded'}">📋 독서록 ${logGraded}/${b.logs.length}채점</span>`);
+    if(b.trans.length)tags.push(`<span class="badge" style="background:#ede9fe;color:#4c1d95;border:1px solid #a78bfa;">🖊️ 필사 ${trGraded}/${b.trans.length}채점</span>`);
+    return `<div class="bv-card" onclick="openBVModal('${esc(b.student)}','${esc(b.title)}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="bv-title">${esc(b.title)}</div>
+          <div class="bv-student">${esc(b.student)}${b.author?' · '+esc(b.author):''}</div>
+        </div>
+      </div>
+      <div class="bv-badges">${tags.join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function openBVModal(student,title){
+  const logs=allLogs.filter(l=>l.student===student&&l.title===title);
+  const trans=allTranscriptions.find(t=>t.student===student&&t.title===title);
+
+  document.getElementById('bvModalTitle').textContent=title;
+  document.getElementById('bvModalSub').textContent=student;
+
+  let html='';
+
+  // 독서록 섹션
+  html+=`<div class="bv-section"><div class="bv-section-title">📋 독서록</div>`;
+  if(logs.length){
+    logs.forEach(l=>{
+      const period=l.startDate?(l.startDate===l.endDate?l.startDate:`${l.startDate}~${l.endDate||''}`):'';
+      const stars='⭐'.repeat(Number(l.stars)||0)||'—';
+      html+=`<div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+          <span style="font-size:.78rem;color:var(--muted);">${period} · ${stars}</span>
+          <span class="badge ${l.score!==''&&l.score!=null?'badge-graded':'badge-ng'}">${l.score!==''&&l.score!=null?'✅ '+l.score+'점':'🔔 미채점'}</span>
+        </div>
+        ${l.review?`<div style="font-size:.8rem;color:var(--amber);font-style:italic;margin-bottom:6px;">"${esc(l.review)}"</div>`:''}
+        <div class="bv-log-box">${esc((l.content||''))}</div>
+        ${l.score!==''&&l.score!=null?`<div class="bv-score-box bv-score-log">✅ 점수: ${l.score}점${l.comment?' · "'+esc(l.comment)+'"':''}</div>`:''}
+        <div class="card-actions" style="margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="toggleGrade('${l.row}');closeBVModal();switchTab('grade');">✏️ 채점하러 가기</button>
+        </div>
+      </div>`;
+    });
+  }else{html+=`<div class="bv-no-data">독서록이 없습니다.</div>`;}
+  html+=`</div>`;
+
+  // 필사 섹션
+  html+=`<div class="bv-section"><div class="bv-section-title">🖊️ 필사</div>`;
+  if(trans){
+    const entries=Array.isArray(trans.entries)?trans.entries:[];
+    entries.forEach(e=>{
+      html+=`<div class="bv-tr-entry">
+        ${e.page?`<span class="bv-tr-page">p. ${esc(e.page)}</span><br>`:''}
+        <div class="bv-tr-text">${esc(e.text)}</div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">${e.date||''}</div>
+      </div>`;
+    });
+    if(!entries.length)html+=`<div class="bv-no-data">필사 내용이 없습니다.</div>`;
+    html+=trans.score!==''&&trans.score!=null
+      ?`<div class="bv-score-box bv-score-tr">✅ 필사 점수: ${trans.score}점${trans.comment?' · "'+esc(trans.comment)+'"':''}</div>`
+      :`<div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="toggleTransGrade('${trans.row}');closeBVModal();switchTab('trans');">✏️ 필사 채점하러 가기</button></div>`;
+  }else{html+=`<div class="bv-no-data">제출된 필사가 없습니다.</div>`;}
+  html+=`</div>`;
+
+  document.getElementById('bvModalBody').innerHTML=html;
+  document.getElementById('bvModal').classList.add('open');
+}
+function closeBVModal(){document.getElementById('bvModal').classList.remove('open');}
+
+// ══ LOG LIST ══
+function logCardHTML(l,compact=false){
+  const isUngraded=l.score===''||l.score===null||l.score===undefined;
+  const period=l.startDate?(l.startDate===l.endDate?l.startDate:`${l.startDate}~${l.endDate||''}`):'';
+  const stars='⭐'.repeat(Number(l.stars)||0)||'—';
+  return `<div class="log-card${isUngraded?' ungraded':''}" id="lc_${l.row}">
+    <div class="log-card-top">
+      <div>
+        <div class="log-student">${esc(l.student)}</div>
+        <div class="log-book">📖 ${esc(l.title)}${l.author?' · '+esc(l.author):''}</div>
+        <div class="log-meta">${period}${l.genre?' · '+esc(l.genre):''}${l.sentAt?' · 제출: '+l.sentAt.substring(0,10):''}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+        <span class="badge ${isUngraded?'badge-ng':'badge-graded'}">${isUngraded?'🔔 미채점':'✅ '+l.score+'점'}</span>
+        ${l.genre?`<span class="badge badge-genre">${esc(l.genre)}</span>`:''}
+      </div>
+    </div>
+    ${!compact?`<div class="log-preview" id="prev_${l.row}">${esc((l.content||'').substring(0,200))}${(l.content||'').length>200?'…':''}</div>`:''}
+    <div class="log-footer">
+      <span class="stars">${stars}</span>
+      ${l.review?`<span class="review-quote">"${esc(l.review)}"</span>`:''}
+    </div>
+    <div class="card-actions">
+      ${!compact?`<button class="btn btn-ghost btn-sm" onclick="toggleContent('${l.row}')">📖 전체 보기</button>`:''}
+      <button class="btn btn-primary btn-sm" onclick="toggleGrade('${l.row}')">✏️ ${isUngraded?'채점하기':'수정'}</button>
+      ${!isUngraded?`<span style="font-size:.78rem;color:var(--muted);">코멘트: ${esc(l.comment||'—')}</span>`:''}
+    </div>
+    <div class="grade-panel" id="gp_${l.row}">
+      <div class="grade-row">
+        <label>점수</label>
+        <input type="number" id="gs_${l.row}" min="0" max="100" value="${l.score||''}" placeholder="0~100">
+        <label style="margin-left:10px;">코멘트</label>
+        <input type="text" id="gc_${l.row}" value="${esc(l.comment||'')}" placeholder="학생에게 전달할 코멘트">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-green btn-sm" onclick="submitGrade('${l.row}')">💾 저장</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleGrade('${l.row}')">취소</button>
+        <span class="grade-saved" id="saved_${l.row}">✅ 저장됨</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+let filteredLogs=[];
+function applyFilter(){
+  const student=document.getElementById('filterStudent').value;
+  const status=document.getElementById('filterStatus').value;
+  const search=document.getElementById('filterSearch').value.toLowerCase();
+  filteredLogs=allLogs.filter(l=>{
+    if(student&&l.student!==student)return false;
+    const ungraded=l.score===''||l.score===null||l.score===undefined;
+    if(status==='ungraded'&&!ungraded)return false;
+    if(status==='graded'&&ungraded)return false;
+    if(search&&!(l.title||'').toLowerCase().includes(search)&&!(l.student||'').toLowerCase().includes(search))return false;
+    return true;
+  });
+  document.getElementById('filterCount').textContent=`${filteredLogs.length}건`;
+  const el=document.getElementById('logList');
+  if(!filteredLogs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>조건에 맞는 독서록이 없습니다.</p></div>`;return;}
+  el.innerHTML=filteredLogs.map(l=>logCardHTML(l)).join('');
+}
+function renderLogList(){
+  filteredLogs=[...allLogs];
+  document.getElementById('filterCount').textContent=`${allLogs.length}건`;
+  const el=document.getElementById('logList');
+  if(!allLogs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>제출된 독서록이 없습니다.</p></div>`;return;}
+  el.innerHTML=allLogs.map(l=>logCardHTML(l)).join('');
+}
+function updateFilterStudents(){
+  const names=[...new Set(allLogs.map(l=>l.student).filter(Boolean))].sort();
+  const sel=document.getElementById('filterStudent');
+  sel.innerHTML=`<option value="">전체 학생</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+function toggleContent(row){
+  const prev=document.getElementById('prev_'+row);
+  if(!prev)return;
+  const log=allLogs.find(l=>String(l.row)===String(row));
+  if(!log)return;
+  const expanded=prev.classList.toggle('expanded');
+  prev.textContent=expanded?(log.content||''):((log.content||'').substring(0,200)+((log.content||'').length>200?'…':''));
+  prev.previousElementSibling; // noop
+}
+function toggleGrade(row){
+  const gp=document.getElementById('gp_'+row);
+  if(gp)gp.classList.toggle('open');
+}
+
+// ══ SUBMIT GRADE ══
+async function submitGrade(row){
+  const score=document.getElementById('gs_'+row).value;
+  const comment=document.getElementById('gc_'+row).value;
+  if(score===''||score===null){showToast('❌ 점수를 입력해주세요.','error');return;}
+  const btn=document.querySelector(`#gp_${row} .btn-green`);
+  btn.disabled=true;btn.textContent='💾 저장 중...';
+  try{
+    const res=await jsonpFetch(`${cfg.url}?mode=update&pw=${encodeURIComponent(cfg.pw)}&row=${row}&score=${encodeURIComponent(score)}&comment=${encodeURIComponent(comment)}`);
+    const data=res;
+    if(data.result==='ok'){
+      // Update local cache
+      const log=allLogs.find(l=>String(l.row)===String(row));
+      if(log){log.score=Number(score);log.comment=comment;}
+      buildStudentScores();updateHeaderChips();
+      const saved=document.getElementById('saved_'+row);
+      if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
+      // Update card badge
+      const card=document.getElementById('lc_'+row);
+      if(card){
+        card.classList.remove('ungraded');
+        const badge=card.querySelector('.badge');
+        if(badge){badge.className='badge badge-graded';badge.textContent='✅ '+score+'점';}
+      }
+      document.getElementById('gp_'+row).classList.remove('open');
+      showToast('✅ 점수가 저장되었습니다!','success');
+    }else{showToast('❌ 저장 실패: '+data.message,'error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+  finally{btn.disabled=false;btn.textContent='💾 저장';}
+}
+
+// ══ EXTRA POINTS ══
+function updateExtraStudents(){
+  const names=[...new Set(allLogs.map(l=>l.student).filter(Boolean))].sort();
+  const sel=document.getElementById('extraStudent');
+  sel.innerHTML=`<option value="">학생 선택...</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+async function addExtraScore(){
+  const student=document.getElementById('extraStudent').value;
+  const score=document.getElementById('extraScore').value;
+  const reason=document.getElementById('extraReason').value.trim();
+  const date=document.getElementById('extraDate').value;
+  const comment=document.getElementById('extraComment').value.trim();
+  if(!student){showToast('❌ 학생을 선택해주세요.','error');return;}
+  if(!score){showToast('❌ 점수를 입력해주세요.','error');return;}
+  if(!reason){showToast('❌ 사유를 입력해주세요.','error');return;}
+  try{
+    const data=await jsonpFetch(`${cfg.url}?mode=addExtra&pw=${encodeURIComponent(cfg.pw)}&student=${encodeURIComponent(student)}&score=${encodeURIComponent(score)}&reason=${encodeURIComponent(reason)}&date=${encodeURIComponent(date)}&comment=${encodeURIComponent(comment)}`);
+    if(data.result==='ok'){
+      showToast('✅ 추가점수 저장 완료!','success');
+      document.getElementById('extraScore').value='';
+      document.getElementById('extraReason').value='';
+      document.getElementById('extraComment').value='';
+      document.getElementById('extraStudent').value='';
+      await loadAll();
+    }else{showToast('❌ 저장 실패: '+data.message,'error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+}
+async function deleteExtra(row){
+  if(!confirm('이 추가점수 기록을 삭제할까요?'))return;
+  try{
+    const data=await jsonpFetch(`${cfg.url}?mode=deleteExtra&pw=${encodeURIComponent(cfg.pw)}&row=${row}`);
+    if(data.result==='ok'){showToast('🗑️ 삭제되었습니다.','success');await loadAll();}
+    else{showToast('❌ 삭제 실패','error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+}
+function renderExtraList(){
+  const el=document.getElementById('extraList');
+  if(!extraData.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>추가점수 기록이 없습니다.</p></div>`;return;}
+  el.innerHTML=extraData.map(e=>`
+    <div class="extra-item">
+      <div class="extra-left">
+        <div class="extra-student">${esc(e.student)}</div>
+        <div class="extra-reason">${esc(e.reason)}</div>
+        ${e.comment?`<div class="extra-comment">"${esc(e.comment)}"</div>`:''}
+      </div>
+      <div class="extra-right">
+        <div>
+          <div class="extra-score">+${e.score}점</div>
+          <div class="extra-date">${e.date||''}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteExtra('${e.row}')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+// ══ LEADERBOARD ══
+function renderLeaderboard(){
+  const el=document.getElementById('leaderGrid');
+  const sorted=Object.entries(studentScores).sort((a,b)=>b[1].score-a[1].score);
+  // 드롭다운 업데이트
+  const sel=document.getElementById('resetStudentSelect');
+  if(sel){
+    sel.innerHTML=`<option value="">학생 선택...</option>`+sorted.map(([name])=>`<option value="${esc(name)}">${esc(name)}</option>`).join('');
+  }
+  if(!sorted.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div><p>학생 데이터가 없습니다.</p></div>`;return;}
+  el.innerHTML=sorted.map(([name,info],i)=>{
+    const tier=getTier(info.score);
+    const pct=tier.next?Math.min(100,(info.score-tier.min)/(tier.next-tier.min)*100):100;
+    return `<div class="leader-card">
+      <div class="leader-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</div>
+      <div class="leader-tier">${getTierSVG(tier.name,44)}</div>
+      <div class="leader-info">
+        <div class="leader-name">${esc(name)}</div>
+        <div class="leader-stats">${tier.name} · 독서록 ${info.logCount}편 중 ${info.gradedCount}편 채점</div>
+        <div class="tier-bar-mini"><div class="tier-bar-fill" style="width:${pct}%;background:${tier.color};"></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div class="leader-score">${info.score}점</div>
+        <button class="btn btn-danger btn-sm" style="font-size:.72rem;padding:4px 10px;" onclick="resetStudentScoreByName('${esc(name)}')">초기화</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══ 점수 초기화 ══
+function resetStudentScore(){
+  const sel=document.getElementById('resetStudentSelect');
+  const name=sel?sel.value:'';
+  if(!name){showToast('❌ 학생을 선택해주세요.','error');return;}
+  resetStudentScoreByName(name);
+}
+
+async function resetStudentScoreByName(name){
+  if(!confirm(`"${name}" 학생의 모든 점수(독서록·필사)를 초기화할까요?\n구글 시트의 점수 칸이 비워집니다.`))return;
+  try{
+    const data=await jsonpFetch(`${cfg.url}?mode=resetScore&pw=${encodeURIComponent(cfg.pw)}&student=${encodeURIComponent(name)}`);
+    if(data.result==='ok'){
+      showToast(`✅ "${name}" 점수 초기화 완료!`,'success');
+      await loadAll();
+    }else{showToast('❌ 실패: '+data.message,'error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+}
+
+async function resetAllScores(){
+  if(!confirm('⚠️ 모든 학생의 점수를 초기화합니다.\n구글 시트의 교사점수·교사코멘트 칸이 전부 비워집니다.\n이 작업은 되돌릴 수 없습니다. 계속할까요?'))return;
+  try{
+    const data=await jsonpFetch(`${cfg.url}?mode=resetAllScores&pw=${encodeURIComponent(cfg.pw)}`);
+    if(data.result==='ok'){
+      showToast('✅ 전체 점수 초기화 완료!','success');
+      await loadAll();
+    }else{showToast('❌ 실패: '+data.message,'error');}
+  }catch(e){showToast('❌ 오류: '+e.message,'error');}
+}
+
+// ══ SETTINGS ══
+function saveSettings(){
+  cfg.url=document.getElementById('settingURL').value.trim();
+  cfg.pw=document.getElementById('settingPW').value.trim();
+  localStorage.setItem('teacher_cfg',JSON.stringify(cfg));
+  document.getElementById('headerURL').textContent=cfg.url.substring(0,50)+(cfg.url.length>50?'…':'');
+  showToast('✅ 설정 저장 완료!','success');
+}
+
+// ══ APPS SCRIPT CODE ══
+function initScriptCode(){
+  document.getElementById('scriptCode').textContent=
+`// ─────────────────────────────────────────────
+// 독서록 채점 시스템 — Apps Script (통합 버전)
+// 학생용·교사용 앱 모두 지원 + 필사 채점 포함
+// ─────────────────────────────────────────────
+
+const SHEET_NAME  = '독서록';
+const EXTRA_SHEET = '추가점수';
+const TRANS_SHEET = '필사';
+const TEACHER_PW  = '여기에비밀번호입력';  // ← 원하는 비밀번호로 변경
+
+// ── POST: 학생 독서록 / 필사 제출 ──
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (data.type === 'transcription') {
+    let sheet = ss.getSheetByName(TRANS_SHEET) || ss.insertSheet(TRANS_SHEET);
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(['제출일시','학생이름','책제목','저자','페이지','필사내용','기록일','교사점수','교사코멘트']);
+      sheet.setFrozenRows(1);
+      sheet.getRange(1,1,1,9).setBackground('#4c1082').setFontColor('#ffffff');
+    }
+    const entries = data.entries || [];
+    entries.forEach((entry, idx) => {
+      sheet.appendRow([
+        idx === 0 ? data.sentAt : '↑',
+        idx === 0 ? data.student : '↑',
+        idx === 0 ? data.title : '↑',
+        idx === 0 ? (data.author||'') : '↑',
+        entry.page || '',
+        entry.text || '',
+        entry.date || '',
+        idx === 0 ? '' : '↑',
+        idx === 0 ? '' : '↑'
+      ]);
+    });
+    return ok('transcription submitted');
+  }
+
+  let sheet = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['제출일시','학생이름','책제목','저자',
+      '읽기시작','읽기종료','장르','별점','한줄평','내용','교사점수','교사코멘트']);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1,1,1,12).setBackground('#1a2744').setFontColor('#ffffff');
+  }
+  sheet.appendRow([data.sentAt, data.student, data.title, data.author,
+    data.startDate, data.endDate, data.genre,
+    data.stars, data.review, data.content, '', '']);
+  return ok('submitted');
+}
+
+// ── GET: 모든 기능 라우터 ──
+function doGet(e) {
+  const pw       = e.parameter.pw       || '';
+  const mode     = e.parameter.mode     || 'student';
+  const callback = e.parameter.callback || '';
+
+  // JSONP 응답 헬퍼 (callback 파라미터가 있으면 JS로, 없으면 JSON으로)
+  function respond(output) {
+    if (!callback) return output;
+    const json = output.getContent();
+    return ContentService
+      .createTextOutput(callback + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  if (mode === 'student' || !mode) return respond(getStudentScores(e));
+  if (pw !== TEACHER_PW) return respond(error('unauthorized'));
+
+  switch (mode) {
+    case 'ping':        return respond(ok('pong'));
+    case 'all':         return respond(getAllLogs());
+    case 'update':      return respond(updateScore(e));
+    case 'allTrans':    return respond(getAllTranscriptions());
+    case 'updateTrans': return respond(updateTransScore(e));
+    case 'extras':      return respond(getExtras());
+    case 'addExtra':    return respond(addExtra(e));
+    case 'deleteExtra': return respond(deleteExtra(e));
+    case 'deleteLog':   return respond(deleteLogRow(e));
+    case 'getStudentLogs': return respond(getStudentLogs(e));
+    case 'deleteTrans': return respond(deleteTransRow(e));
+    case 'resetScore':      return respond(resetStudentScore(e));
+    case 'resetAllScores':  return respond(resetAllStudentScores());
+    default:            return respond(error('unknown mode'));
+  }
+}
+
+// ── 학생 점수 조회 ──
+function getStudentScores(e) {
+  const student = e.parameter.student;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  let reviews = [];
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const isOld = !headers.includes('읽기시작');
+    reviews = data.slice(1)
+      .filter(r => r[1] === student && r[isOld?9:10] !== '')
+      .map(r => ({ title: r[2], date: fmtDate(r[0]),
+        score: r[isOld?9:10], comment: r[isOld?10:11] }));
+  }
+
+  let extras = [];
+  const es = ss.getSheetByName(EXTRA_SHEET);
+  if (es) {
+    const ed = es.getDataRange().getValues();
+    extras = ed.slice(1)
+      .filter(r => r[0] === student && r[2] !== '')
+      .map(r => ({ reason: r[1], score: r[2],
+        date: r[3] ? fmtDate(new Date(r[3])) : '', comment: r[4] }));
+  }
+
+  let transcriptions = [];
+  const ts = ss.getSheetByName(TRANS_SHEET);
+  if (ts) {
+    const td = ts.getDataRange().getValues();
+    transcriptions = td.slice(1)
+      .filter(r => r[1] === student && r[1] !== '↑' && r[7] !== '')
+      .map(r => ({ title: r[2], date: fmtDate(r[0]),
+        score: r[7], comment: r[8] }));
+  }
+
+  return jsonOut({ reviews, extras, transcriptions });
+}
+
+// ── 전체 독서록 조회 (교사) ──
+function getAllLogs() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return jsonOut([]);
+  const headers = data[0].map(h => String(h).trim());
+  const isOld = !headers.includes('읽기시작');
+  return jsonOut(data.slice(1).map((r, i) => ({
+    row: i+2, sentAt: fmtDate(r[0]),
+    student: r[1], title: r[2], author: r[3],
+    startDate: r[4] ? fmtDate(new Date(r[4])) : '',
+    endDate: r[isOld?4:5] ? fmtDate(new Date(r[isOld?4:5])) : '',
+    genre: r[isOld?5:6], stars: r[isOld?6:7], review: r[isOld?7:8],
+    content: r[isOld?8:9],
+    score: r[isOld?9:10]===''?'':r[isOld?9:10],
+    comment: r[isOld?10:11]
+  })));
+}
+
+// ── 점수 업데이트 (교사) ──
+function updateScore(e) {
+  const row = parseInt(e.parameter.row);
+  if (!row) return error('missing row');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) return error('sheet not found');
+  const headers = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0].map(h=>String(h).trim());
+  const isOld = !headers.includes('읽기시작');
+  sheet.getRange(row, isOld?10:11).setValue(Number(e.parameter.score));
+  sheet.getRange(row, isOld?11:12).setValue(e.parameter.comment||'');
+  return ok('updated');
+}
+
+// ── 전체 필사 조회 (교사) ──
+function getAllTranscriptions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TRANS_SHEET);
+  if (!sheet) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return jsonOut([]);
+  const groups = [];
+  let current = null;
+  data.slice(1).forEach((r, i) => {
+    if (r[1] !== '↑') {
+      current = {
+        row: i + 2, sentAt: fmtDate(r[0]),
+        student: r[1], title: r[2], author: r[3],
+        score: r[7] === '' ? '' : r[7], comment: r[8], entries: []
+      };
+      groups.push(current);
+    }
+    if (current) current.entries.push({ page: r[4], text: r[5], date: r[6] });
+  });
+  return jsonOut(groups);
+}
+
+// ── 필사 점수 업데이트 (교사) ──
+function updateTransScore(e) {
+  const row = parseInt(e.parameter.row);
+  if (!row) return error('missing row');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(TRANS_SHEET);
+  if (!sheet) return error('sheet not found');
+  sheet.getRange(row, 8).setValue(Number(e.parameter.score));
+  sheet.getRange(row, 9).setValue(e.parameter.comment||'');
+  return ok('updated');
+}
+
+// ── 추가점수 전체 조회 ──
+function getExtras() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(EXTRA_SHEET);
+  if (!sheet) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return jsonOut([]);
+  return jsonOut(data.slice(1).map((r, i) => ({
+    row: i+2, student: r[0], reason: r[1], score: r[2],
+    date: r[3] ? fmtDate(new Date(r[3])) : '', comment: r[4]
+  })));
+}
+
+// ── 추가점수 추가 ──
+function addExtra(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(EXTRA_SHEET) || ss.insertSheet(EXTRA_SHEET);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['학생이름','사유','점수','날짜','코멘트']);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1,1,1,5).setBackground('#2d5a3d').setFontColor('#ffffff');
+  }
+  sheet.appendRow([e.parameter.student, e.parameter.reason,
+    Number(e.parameter.score), e.parameter.date, e.parameter.comment||'']);
+  return ok('added');
+}
+
+// ── 추가점수 삭제 ──
+function deleteExtra(e) {
+  const row = parseInt(e.parameter.row);
+  if (!row) return error('missing row');
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(EXTRA_SHEET);
+  if (!sheet) return error('sheet not found');
+  sheet.deleteRow(row);
+  return ok('deleted');
+}
+
+// ── 헬퍼 ──
+// ── 독서록 삭제 (학생 요청) ──
+// ── 학생 제출 독서록 전체 조회 (복원용) ──
+function getStudentLogs(e) {
+  const student = e.parameter.student;
+  if (!student) return error('missing student');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return jsonOut([]);
+  const headers = data[0].map(h => String(h).trim());
+  const isOld = !headers.includes('읽기시작');
+  const rows = data.slice(1)
+    .filter(r => r[1] === student)
+    .map(r => ({
+      sentAt:    fmtDate(r[0]),
+      title:     r[2], author: r[3],
+      startDate: r[isOld?4:4] ? fmtDate(new Date(r[isOld?4:4])) : '',
+      endDate:   r[isOld?4:5] ? fmtDate(new Date(r[isOld?4:5])) : '',
+      genre:     r[isOld?5:6], stars: r[isOld?6:7],
+      review:    r[isOld?7:8], content: r[isOld?8:9],
+      score:     r[isOld?9:10] === '' ? '' : r[isOld?9:10],
+      comment:   r[isOld?10:11]
+    }));
+  return jsonOut(rows);
+}
+
+function deleteLogRow(e) {
+  const student = e.parameter.student;
+  const title   = e.parameter.title;
+  const sentAt  = e.parameter.sentAt || '';
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) return ok('no sheet');
+  const data = sheet.getDataRange().getValues();
+  for (let i = data.length - 1; i >= 1; i--) {
+    const r = data[i];
+    if (r[1] === student && r[2] === title) {
+      if (!sentAt || fmtDate(r[0]) === sentAt.substring(0,10)) {
+        sheet.deleteRow(i + 1);
+        return ok('deleted');
+      }
+    }
+  }
+  return ok('not found');
+}
+
+// ── 필사 삭제 (학생 요청) ──
+function deleteTransRow(e) {
+  const student = e.parameter.student;
+  const title   = e.parameter.title;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(TRANS_SHEET);
+  if (!sheet) return ok('no sheet');
+  const data = sheet.getDataRange().getValues();
+  const rowsToDelete = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] === student && data[i][2] === title) rowsToDelete.push(i + 1);
+    else if (data[i][1] === '↑' && rowsToDelete.length > 0) rowsToDelete.push(i + 1);
+    else if (data[i][1] !== '↑') rowsToDelete.length = 0;
+  }
+  rowsToDelete.reverse().forEach(row => sheet.deleteRow(row));
+  return ok('deleted');
+}
+
+// ── 특정 학생 점수 초기화 ──
+function resetStudentScore(e) {
+  const student = e.parameter.student;
+  if (!student) return error('missing student');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 독서록 시트 점수 칸 초기화
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (sheet && sheet.getLastRow() > 1) {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const isOld = !headers.includes('읽기시작');
+    const scoreCol  = isOld ? 10 : 11;
+    const commentCol = isOld ? 11 : 12;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][1] === student) {
+        sheet.getRange(i+1, scoreCol).clearContent();
+        sheet.getRange(i+1, commentCol).clearContent();
+      }
+    }
+  }
+
+  // 필사 시트 점수 칸 초기화
+  const ts = ss.getSheetByName(TRANS_SHEET);
+  if (ts && ts.getLastRow() > 1) {
+    const tdata = ts.getDataRange().getValues();
+    for (let i = 1; i < tdata.length; i++) {
+      if (tdata[i][1] === student) {
+        ts.getRange(i+1, 8).clearContent();
+        ts.getRange(i+1, 9).clearContent();
+      }
+    }
+  }
+
+  // 추가점수 시트에서 해당 학생 행 삭제
+  const es = ss.getSheetByName(EXTRA_SHEET);
+  if (es && es.getLastRow() > 1) {
+    const edata = es.getDataRange().getValues();
+    for (let i = edata.length - 1; i >= 1; i--) {
+      if (edata[i][0] === student) es.deleteRow(i+1);
+    }
+  }
+
+  return ok('reset done');
+}
+
+// ── 전체 학생 점수 초기화 ──
+function resetAllStudentScores() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 독서록 점수 칸 전체 초기화
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  if (sheet && sheet.getLastRow() > 1) {
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const isOld = !headers.includes('읽기시작');
+    const scoreCol  = isOld ? 10 : 11;
+    const commentCol = isOld ? 11 : 12;
+    for (let i = 1; i < data.length; i++) {
+      sheet.getRange(i+1, scoreCol).clearContent();
+      sheet.getRange(i+1, commentCol).clearContent();
+    }
+  }
+
+  // 필사 점수 칸 전체 초기화
+  const ts = ss.getSheetByName(TRANS_SHEET);
+  if (ts && ts.getLastRow() > 1) {
+    const tdata = ts.getDataRange().getValues();
+    for (let i = 1; i < tdata.length; i++) {
+      ts.getRange(i+1, 8).clearContent();
+      ts.getRange(i+1, 9).clearContent();
+    }
+  }
+
+  // 추가점수 시트 전체 삭제 (헤더 제외)
+  const es = ss.getSheetByName(EXTRA_SHEET);
+  if (es && es.getLastRow() > 1) {
+    es.deleteRows(2, es.getLastRow() - 1);
+  }
+
+  return ok('all reset done');
+}
+
+function fmtDate(d) {
+  try { return Utilities.formatDate(new Date(d), 'Asia/Seoul', 'yyyy-MM-dd'); }
+  catch(e) { return String(d); }
+}
+function jsonOut(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function ok(msg)    { return jsonOut({ result: 'ok',    message: msg }); }
+function error(msg) { return jsonOut({ result: 'error', message: msg }); }`;
+}
+
+function copyScript(){
+  navigator.clipboard.writeText(document.getElementById('scriptCode').textContent)
+    .then(()=>showToast('📋 코드 복사 완료!','success'));
+}
+
+// ══ UTILS ══
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(type?' '+type:'')+' show';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
