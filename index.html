@@ -266,6 +266,21 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
 .bv-score-tr{background:#ede9fe;border:1px solid #a78bfa;color:#4c1d95;}
 .bv-no-data{color:var(--muted);font-size:.83rem;font-style:italic;padding:8px 0;}
 
+/* 학생 명단 */
+.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:4px;}
+.roster-chip{background:var(--paper);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+  box-shadow:var(--shadow);font-size:.88rem;font-weight:700;color:var(--navy);}
+.roster-chip.synced{border-color:var(--green);background:#f0fff4;}
+.roster-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:.9rem;
+  padding:0 0 0 8px;transition:color .2s;font-family:sans-serif;line-height:1;}
+.roster-del:hover{color:var(--red);}
+.roster-input-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
+.roster-input-row input{flex:1;font-family:'Nanum Gothic',sans-serif;font-size:.9rem;
+  border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
+  background:var(--paper);outline:none;}
+.roster-input-row input:focus{border-color:var(--navy);}
+
 .watermark{position:fixed;bottom:10px;right:14px;font-size:.68rem;
   color:rgba(100,90,70,.4);pointer-events:none;z-index:999;}
 
@@ -419,21 +434,6 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
   </div>
   </div>
 
-/* 학생 명단 */
-.roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:4px;}
-.roster-chip{background:var(--paper);border:1px solid var(--border);border-radius:8px;
-  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
-  box-shadow:var(--shadow);font-size:.88rem;font-weight:700;color:var(--navy);}
-.roster-chip.synced{border-color:var(--green);background:#f0fff4;}
-.roster-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:.9rem;
-  padding:0 0 0 8px;transition:color .2s;font-family:sans-serif;line-height:1;}
-.roster-del:hover{color:var(--red);}
-.roster-input-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
-.roster-input-row input{flex:1;font-family:'Nanum Gothic',sans-serif;font-size:.9rem;
-  border:1.5px solid var(--border);border-radius:8px;padding:10px 14px;
-  background:var(--paper);outline:none;}
-.roster-input-row input:focus{border-color:var(--navy);}
-
   <!-- ROSTER -->
   <div class="tab-panel" id="panel-roster">
   <div class="container">
@@ -445,10 +445,12 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
       이후 학생이 독서록을 제출하면 <b>전체 시트 + 개인 시트</b>에 동시 저장됩니다.
     </div>
     <div class="roster-input-row">
-      <input type="text" id="rosterInput" placeholder="학생 이름 입력 후 엔터"
+      <input type="text" id="rosterInput" placeholder="학생 이름 입력 후 엔터 (예: 3학년 1반 1번 홍길동)"
              onkeydown="if(event.key==='Enter')addRosterStudent()">
       <button class="btn btn-secondary" onclick="addRosterStudent()">+ 추가</button>
       <button class="btn btn-secondary" onclick="togglePasteArea()">📋 일괄 입력</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('excelFile').click()">📊 엑셀 업로드</button>
+      <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="loadExcelRoster(event)">
     </div>
     <div id="pasteArea" style="display:none;margin-bottom:12px;">
       <textarea id="pasteText" rows="6"
@@ -702,10 +704,6 @@ window.onload=()=>{
     document.getElementById('loginURL').value=cfg.url;
     document.getElementById('loginPW').value=cfg.pw;
   }
-  initScriptCode();
-  document.getElementById('loginScriptCode').textContent=
-    document.getElementById('scriptCode').textContent;
-
   // Auto-login if credentials stored
   if(cfg.url&&cfg.pw){tryLogin(cfg.url,cfg.pw,true);}
 
@@ -715,7 +713,20 @@ window.onload=()=>{
 
 function toggleLoginCode(){
   const box=document.getElementById('loginCodeBox');
-  box.style.display=box.style.display==='none'?'block':'none';
+  const isHidden=box.style.display==='none'||!box.style.display;
+  if(isHidden){
+    // 코드 채우기 (최초 1회)
+    if(!document.getElementById('loginScriptCode').textContent){
+      initScriptCode();
+      document.getElementById('loginScriptCode').textContent=
+        document.getElementById('scriptCode').textContent;
+      // 설정탭 pre는 다시 비움 (로그인 화면에서만 사용)
+      document.getElementById('scriptCode').textContent='';
+    }
+    box.style.display='block';
+  }else{
+    box.style.display='none';
+  }
 }
 function copyLoginScript(){
   navigator.clipboard.writeText(document.getElementById('loginScriptCode').textContent)
@@ -799,6 +810,7 @@ function switchTab(id){
   if(id==='extra'){renderExtraList();updateExtraStudents();}
   if(id==='students')renderLeaderboard();
   if(id==='roster')renderRoster();
+  if(id==='settings'){initScriptCode();}
 }
 
 // ══ 학생 명단 ══
@@ -852,6 +864,58 @@ function togglePasteArea(){
   if(el.style.display==='block')document.getElementById('pasteText').focus();
 }
 
+function loadExcelRoster(event){
+  const file=event.target.files[0];
+  if(!file){return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      // CSV 처리
+      if(file.name.endsWith('.csv')){
+        const text=new TextDecoder('utf-8').decode(e.target.result);
+        const names=text.split(/\r?\n/).map(l=>l.split(',')[0].trim()).filter(Boolean);
+        let added=0;
+        names.forEach(name=>{
+          if(name==='이름'||name==='학생이름'||name==='Name')return; // 헤더 제외
+          if(!roster.some(s=>s.name===name)){roster.push({name,synced:false});added++;}
+        });
+        saveRoster();renderRoster();
+        showToast(`✅ CSV에서 ${added}명 추가됐습니다.`,'success');
+        return;
+      }
+      // Excel 처리 (SheetJS)
+      if(typeof XLSX==='undefined'){
+        showToast('❌ 엑셀 파싱 라이브러리를 불러오는 중...');
+        const script=document.createElement('script');
+        script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload=()=>{parseExcel(e.target.result);};
+        document.head.appendChild(script);
+      }else{
+        parseExcel(e.target.result);
+      }
+    }catch(err){showToast('❌ 파일 읽기 실패: '+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value='';
+}
+
+function parseExcel(buffer){
+  const wb=XLSX.read(buffer,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+  // 첫 열에서 이름 추출 (첫 행이 헤더면 제외)
+  let added=0;
+  rows.forEach((row,idx)=>{
+    const name=String(row[0]||'').trim();
+    if(!name)return;
+    // 헤더 행 감지 ('이름','학생','name' 등)
+    if(idx===0&&/이름|학생|name|번호/i.test(name))return;
+    if(!roster.some(s=>s.name===name)){roster.push({name,synced:false});added++;}
+  });
+  saveRoster();renderRoster();
+  showToast(`✅ 엑셀에서 ${added}명 추가됐습니다.`,'success');
+}
+
 function confirmPaste(){
   const text=document.getElementById('pasteText').value;
   const names=text.split('\n').map(n=>n.trim()).filter(Boolean);
@@ -867,7 +931,7 @@ function confirmPaste(){
 
 async function applyRosterToSheets(){
   if(!roster.length){showToast('❌ 등록된 학생이 없습니다.','error');return;}
-  if(!confirm(`학생 ${roster.length}명의 시트를 구글 시트에 생성합니다.\n이미 있는 시트는 건드리지 않습니다. 계속할까요?`))return;
+  if(!confirm(`학생 ${roster.length}명의 시트를 생성하고 명단을 저장합니다.\n이미 있는 시트는 건드리지 않습니다. 계속할까요?`))return;
   try{
     showToast('☁️ 시트 생성 중...');
     const names=roster.map(s=>s.name);
@@ -875,7 +939,7 @@ async function applyRosterToSheets(){
     if(data.result==='ok'){
       roster.forEach(s=>s.synced=true);
       saveRoster();renderRoster();
-      showToast(`✅ 시트 생성 완료! (전체 + 학생별 ${names.length}개)`,'success');
+      showToast(`✅ 시트 생성 + 명단 저장 완료! (${names.length}명)`,'success');
     }else{showToast('❌ 실패: '+data.message,'error');}
   }catch(e){showToast('❌ 오류: '+e.message,'error');}
 }
@@ -1557,6 +1621,7 @@ function doGet(e) {
   }
 
   if (mode === 'student' || !mode) return respond(getStudentScores(e));
+  if (mode === 'getStudentList') return respond(getStudentList());
   if (pw !== TEACHER_PW) return respond(error('unauthorized'));
 
   switch (mode) {
@@ -1574,6 +1639,7 @@ function doGet(e) {
     case 'resetScore':         return respond(resetStudentScore(e));
     case 'resetAllScores':     return respond(resetAllStudentScores());
     case 'setupStudentSheets': return respond(setupStudentSheets(e));
+    case 'getStudentList':     return respond(getStudentList());
     default:                   return respond(error('unknown mode'));
   }
 }
@@ -1824,11 +1890,29 @@ function resetAllStudentScores() {
   return ok('all reset done');
 }
 
+// ── 학생 명단 조회 (비밀번호 불필요 — 학생 로그인 검증용) ──
+function getStudentList() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('명단');
+  if (!sheet || sheet.getLastRow() <= 1) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  return jsonOut(data.slice(1).map(r => String(r[0]).trim()).filter(Boolean));
+}
+
 // ── 학생별 시트 생성 (setupStudentSheets) ──
 function setupStudentSheets(e) {
   const students = JSON.parse(e.parameter.students || '[]');
   if (!students.length) return error('no students');
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 명단 시트 저장/갱신
+  let rosterSheet = ss.getSheetByName('명단');
+  if (!rosterSheet) { rosterSheet = ss.insertSheet('명단'); }
+  rosterSheet.clearContents();
+  rosterSheet.appendRow(['이름']);
+  rosterSheet.setFrozenRows(1);
+  rosterSheet.getRange(1,1,1,1).setBackground('#1a2744').setFontColor('#ffffff');
+  students.forEach(name => rosterSheet.appendRow([name]));
 
   // 전체 시트 생성
   const mainSheet = ss.getSheetByName(MAIN_SHEET) || ss.insertSheet(MAIN_SHEET);
