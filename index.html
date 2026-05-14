@@ -696,6 +696,111 @@ function getTierSVG(name,size=44){
 let cfg={url:'',pw:''};
 let allLogs=[], extraData=[], allTranscriptions=[], studentScores={};
 
+// ══ SAFE NORMALIZATION HELPERS ══
+function normalizeText(value){
+  if(value==null)return '';
+  if(typeof value==='string')return value;
+  if(typeof value==='number'||typeof value==='boolean'||typeof value==='bigint')return String(value);
+  if(Array.isArray(value))return value.map(normalizeText).filter(Boolean).join('\n');
+  if(typeof value==='object'){
+    if('text' in value)return normalizeText(value.text);
+    if('value' in value)return normalizeText(value.value);
+    if('comment' in value)return normalizeText(value.comment);
+    if('content' in value)return normalizeText(value.content);
+    if('name' in value)return normalizeText(value.name);
+    try{return JSON.stringify(value);}catch(e){return '';}
+  }
+  return String(value);
+}
+function normalizeNumber(value,fallback=0){
+  if(value==null||value==='')return fallback;
+  if(typeof value==='number')return Number.isFinite(value)?value:fallback;
+  const n=Number(String(value).replace(/[^\d.-]/g,''));
+  return Number.isFinite(n)?n:fallback;
+}
+function isBlankScore(value){return value===''||value===null||value===undefined;}
+function normalizeLog(log){
+  log=(log&&typeof log==='object')?log:{};
+  const scoreValue=(log.score!==undefined&&log.score!==null&&log.score!=='')?log.score:log.teacherScore;
+  return {
+    ...log,
+    row: normalizeText(log.row),
+    id: normalizeText(log.id||log.logId||log.timestamp||log.row||Date.now()),
+    student: normalizeText(log.student||log.studentName||log.name),
+    title: normalizeText(log.title||log.bookTitle),
+    author: normalizeText(log.author||log.bookAuthor),
+    genre: normalizeText(log.genre),
+    content: normalizeText(log.content||log.body||log.text),
+    review: normalizeText(log.review),
+    date: normalizeText(log.date||log.submittedAt||log.createdAt),
+    sentAt: normalizeText(log.sentAt||log.submittedAt||log.date||log.createdAt),
+    startDate: normalizeText(log.startDate),
+    endDate: normalizeText(log.endDate),
+    stars: normalizeNumber(log.stars,0),
+    score: isBlankScore(scoreValue)?'':normalizeNumber(scoreValue,0),
+    comment: normalizeText(log.comment||log.teacherComment),
+    teacherComment: normalizeText(log.teacherComment||log.comment),
+    status: normalizeText(log.status||(isBlankScore(scoreValue)?'ungraded':'graded'))
+  };
+}
+function normalizeTranscription(item){
+  item=(item&&typeof item==='object')?item:{};
+  const scoreValue=(item.score!==undefined&&item.score!==null&&item.score!=='')?item.score:item.teacherScore;
+  const entries=Array.isArray(item.entries)?item.entries.map(e=>{
+    e=(e&&typeof e==='object')?e:{text:e};
+    return {...e,page:normalizeText(e.page),text:normalizeText(e.text||e.content),date:normalizeText(e.date||e.createdAt)};
+  }):[];
+  return {
+    ...item,
+    row: normalizeText(item.row),
+    id: normalizeText(item.id||item.trId||item.timestamp||item.row||Date.now()),
+    student: normalizeText(item.student||item.studentName||item.name),
+    title: normalizeText(item.title||item.bookTitle),
+    author: normalizeText(item.author||item.bookAuthor),
+    page: normalizeText(item.page),
+    text: normalizeText(item.text||item.content),
+    entries,
+    date: normalizeText(item.date||item.submittedAt||item.createdAt),
+    sentAt: normalizeText(item.sentAt||item.submittedAt||item.date||item.createdAt),
+    score: isBlankScore(scoreValue)?'':normalizeNumber(scoreValue,0),
+    comment: normalizeText(item.comment||item.teacherComment),
+    teacherComment: normalizeText(item.teacherComment||item.comment),
+    status: normalizeText(item.status||(isBlankScore(scoreValue)?'ungraded':'graded'))
+  };
+}
+function normalizeExtra(item){
+  item=(item&&typeof item==='object')?item:{};
+  return {
+    ...item,
+    row: normalizeText(item.row),
+    id: normalizeText(item.id||item.timestamp||item.row||Date.now()),
+    student: normalizeText(item.student||item.studentName||item.name),
+    reason: normalizeText(item.reason),
+    comment: normalizeText(item.comment),
+    date: normalizeText(item.date||item.createdAt),
+    score: normalizeNumber(item.score||item.points,0)
+  };
+}
+function normalizeRosterItem(item){
+  item=(item&&typeof item==='object')?item:{name:item};
+  return {...item,name:normalizeText(item.name||item.student||item.studentName),synced:!!item.synced};
+}
+function normalizePayloadArray(data,normalizer){
+  if(Array.isArray(data))return data.map(normalizer);
+  if(data&&Array.isArray(data.data))return data.data.map(normalizer);
+  if(data&&Array.isArray(data.rows))return data.rows.map(normalizer);
+  if(data&&Array.isArray(data.items))return data.items.map(normalizer);
+  return [];
+}
+function normalizeAllLocalData(){
+  allLogs=normalizePayloadArray(allLogs,normalizeLog);
+  allTranscriptions=normalizePayloadArray(allTranscriptions,normalizeTranscription);
+  extraData=normalizePayloadArray(extraData,normalizeExtra);
+  roster=Array.isArray(roster)?roster.map(normalizeRosterItem):[];
+}
+function safeLower(value){return normalizeText(value).toLowerCase();}
+
+
 // ══ INIT ══
 window.onload=()=>{
   const saved=localStorage.getItem('teacher_cfg');
@@ -818,7 +923,7 @@ let roster=[]; // [{name, synced}]
 
 function loadRoster(){
   const saved=localStorage.getItem('teacher_roster');
-  if(saved){try{roster=JSON.parse(saved);}catch(e){}}
+  if(saved){try{roster=JSON.parse(saved);roster=Array.isArray(roster)?roster.map(normalizeRosterItem):[];}catch(e){roster=[];}}
 }
 function saveRoster(){localStorage.setItem('teacher_roster',JSON.stringify(roster));}
 
@@ -951,11 +1056,11 @@ async function loadAll(){
       jsonpFetch(cfg.url+'?mode=all&pw='+encodeURIComponent(cfg.pw)),
       jsonpFetch(cfg.url+'?mode=extras&pw='+encodeURIComponent(cfg.pw))
     ]);
-    allLogs=allData;
+    allLogs=normalizePayloadArray(allData,normalizeLog);
     // 필사는 allTrans로 별도 조회 (구분 열로 서버에서 분리됨)
     const transData=await jsonpFetch(cfg.url+'?mode=allTrans&pw='+encodeURIComponent(cfg.pw));
-    allTranscriptions=transData;
-    extraData=extraData2;
+    allTranscriptions=normalizePayloadArray(transData,normalizeTranscription);
+    extraData=normalizePayloadArray(extraData2,normalizeExtra);
     buildStudentScores();
     updateHeaderChips();
     renderDashboard();
@@ -1096,13 +1201,13 @@ function updateTransStudents(){
 function applyTransFilter(){
   const student=document.getElementById('filterTransStudent').value;
   const status=document.getElementById('filterTransStatus').value;
-  const search=document.getElementById('filterTransSearch').value.toLowerCase();
+  const search=safeLower(document.getElementById('filterTransSearch').value);
   const filtered=allTranscriptions.filter(t=>{
     if(student&&t.student!==student)return false;
     const ungraded=t.score===''||t.score===null||t.score===undefined;
     if(status==='ungraded'&&!ungraded)return false;
     if(status==='graded'&&ungraded)return false;
-    if(search&&!(t.title||'').toLowerCase().includes(search))return false;
+    if(search&&!safeLower(t.title).includes(search))return false;
     return true;
   });
   document.getElementById('transFilterCount').textContent=`${filtered.length}건`;
@@ -1120,13 +1225,13 @@ function renderTransCards(list){
   el.innerHTML=list.map(t=>{
     const isUngraded=t.score===''||t.score===null||t.score===undefined;
     const entries=Array.isArray(t.entries)?t.entries:[];
-    const entriesHTML=entries.map(e=>`${e.page?`[p.${e.page}] `:''}${e.text}`).join('\n\n');
+    const entriesHTML=entries.map(e=>`${e.page?`[p.${esc(e.page)}] `:''}${esc(e.text)}`).join('\n\n');
     return `<div class="trans-card${isUngraded?' ungraded':''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
         <div>
           <div class="log-student">${esc(t.student)}</div>
           <div class="log-book">📖 ${esc(t.title)}${t.author?' · '+esc(t.author):''}</div>
-          <div class="log-meta">필사 ${entries.length}개 · 제출: ${t.sentAt||''}</div>
+          <div class="log-meta">필사 ${entries.length}개 · 제출: ${esc(t.sentAt)}</div>
         </div>
         <span class="badge ${isUngraded?'badge-ng':'badge-graded'}">${isUngraded?'🔔 미채점':'✅ '+t.score+'점'}</span>
       </div>
@@ -1168,7 +1273,7 @@ async function submitTransGrade(row){
     const data=res;
     if(data.result==='ok'){
       const t=allTranscriptions.find(x=>String(x.row)===String(row));
-      if(t){t.score=Number(score);t.comment=comment;}
+      if(t){t.score=normalizeNumber(score,0);t.comment=normalizeText(comment);}
       buildStudentScores();updateHeaderChips();
       const saved=document.getElementById('tsaved_'+row);
       if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
@@ -1188,14 +1293,14 @@ function updateBVStudents(){
 
 function renderBookView(){
   const student=document.getElementById('filterBVStudent').value;
-  const search=document.getElementById('filterBVBook').value.toLowerCase();
+  const search=safeLower(document.getElementById('filterBVBook').value);
 
   // 모든 책 목록 (학생+제목 키)
   const bookMap=new Map();
   allLogs.forEach(l=>{
     if(!l.title)return;
     if(student&&l.student!==student)return;
-    if(search&&!l.title.toLowerCase().includes(search))return;
+    if(search&&!safeLower(l.title).includes(search))return;
     const key=l.student+'::'+l.title;
     if(!bookMap.has(key))bookMap.set(key,{student:l.student,title:l.title,author:l.author||'',logs:[],trans:[]});
     bookMap.get(key).logs.push(l);
@@ -1203,7 +1308,7 @@ function renderBookView(){
   allTranscriptions.forEach(t=>{
     if(!t.title)return;
     if(student&&t.student!==student)return;
-    if(search&&!t.title.toLowerCase().includes(search))return;
+    if(search&&!safeLower(t.title).includes(search))return;
     const key=t.student+'::'+t.title;
     if(!bookMap.has(key))bookMap.set(key,{student:t.student,title:t.title,author:t.author||'',logs:[],trans:[]});
     bookMap.get(key).trans.push(t);
@@ -1331,13 +1436,13 @@ let filteredLogs=[];
 function applyFilter(){
   const student=document.getElementById('filterStudent').value;
   const status=document.getElementById('filterStatus').value;
-  const search=document.getElementById('filterSearch').value.toLowerCase();
+  const search=safeLower(document.getElementById('filterSearch').value);
   filteredLogs=allLogs.filter(l=>{
     if(student&&l.student!==student)return false;
     const ungraded=l.score===''||l.score===null||l.score===undefined;
     if(status==='ungraded'&&!ungraded)return false;
     if(status==='graded'&&ungraded)return false;
-    if(search&&!(l.title||'').toLowerCase().includes(search)&&!(l.student||'').toLowerCase().includes(search))return false;
+    if(search&&!safeLower(l.title).includes(search)&&!safeLower(l.student).includes(search))return false;
     return true;
   });
   document.getElementById('filterCount').textContent=`${filteredLogs.length}건`;
@@ -1363,7 +1468,8 @@ function toggleContent(row){
   const log=allLogs.find(l=>String(l.row)===String(row));
   if(!log)return;
   const expanded=prev.classList.toggle('expanded');
-  prev.textContent=expanded?(log.content||''):((log.content||'').substring(0,200)+((log.content||'').length>200?'…':''));
+  const content=normalizeText(log.content);
+  prev.textContent=expanded?content:(content.substring(0,200)+(content.length>200?'…':''));
   prev.previousElementSibling; // noop
 }
 function toggleGrade(row){
@@ -1384,7 +1490,7 @@ async function submitGrade(row){
     if(data.result==='ok'){
       // Update local cache
       const log=allLogs.find(l=>String(l.row)===String(row));
-      if(log){log.score=Number(score);log.comment=comment;}
+      if(log){log.score=normalizeNumber(score,0);log.comment=normalizeText(comment);}
       buildStudentScores();updateHeaderChips();
       const saved=document.getElementById('saved_'+row);
       if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
@@ -1950,7 +2056,7 @@ function copyScript(){
 }
 
 // ══ UTILS ══
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function esc(s){return normalizeText(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#039;');}
 let toastTimer;
 function showToast(msg,type=''){
   const t=document.getElementById('toast');
