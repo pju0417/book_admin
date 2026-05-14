@@ -1729,6 +1729,7 @@ function doGet(e) {
   if (mode === 'student' || !mode) return respond(getStudentScores(e));
   if (mode === 'getStudentList') return respond(getStudentList());
   if (mode === 'getStudentLogs') return respond(getStudentLogs(e));
+  if (mode === 'getStudentTrans') return respond(getStudentTrans(e));
   if (pw !== TEACHER_PW) return respond(error('unauthorized'));
 
   switch (mode) {
@@ -1833,6 +1834,41 @@ function getAllTranscriptions() {
     }
     if ((r[0] === '↑' || r[0] === '필사') && current) {
       current.entries.push({ page: r[11], text: r[10] });
+    }
+  });
+  return jsonOut(groups);
+}
+
+// ── 학생 필사 조회 (복원용, 비밀번호 불필요) ──
+function getStudentTrans(e) {
+  const student = e.parameter.student;
+  if (!student) return error('missing student');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(MAIN_SHEET);
+  if (!sheet || sheet.getLastRow() <= 1) return jsonOut([]);
+  const data = sheet.getDataRange().getValues();
+  // 해당 학생의 필사 그룹만 추출
+  const groups = [];
+  let current = null;
+  data.slice(1).forEach(r => {
+    if (r[0] === '필사' && r[2] === student) {
+      current = {
+        sentAt: fmtDate(r[1]),
+        title: r[3], author: r[4],
+        score: r[12]===''?'':r[12],
+        comment: r[13],
+        entries: []
+      };
+      groups.push(current);
+    } else if (r[0] === '↑' && current) {
+      // 이전 그룹의 연속 항목
+    } else if (r[0] !== '↑') {
+      current = null; // 다른 학생 또는 독서록 행 → 그룹 종료
+    }
+    if (current && (r[0] === '필사' || r[0] === '↑')) {
+      // 중복 추가 방지: 필사 첫 행은 위에서 이미 entries를 초기화한 상태
+      if (r[0] === '↑') current.entries.push({ page: r[11]||'', text: r[10]||'' });
+      else if (r[0] === '필사') current.entries.push({ page: r[11]||'', text: r[10]||'' });
     }
   });
   return jsonOut(groups);
