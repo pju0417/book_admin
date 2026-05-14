@@ -1728,6 +1728,7 @@ function doGet(e) {
 
   if (mode === 'student' || !mode) return respond(getStudentScores(e));
   if (mode === 'getStudentList') return respond(getStudentList());
+  if (mode === 'getStudentLogs') return respond(getStudentLogs(e));
   if (pw !== TEACHER_PW) return respond(error('unauthorized'));
 
   switch (mode) {
@@ -1741,7 +1742,6 @@ function doGet(e) {
     case 'deleteExtra':        return respond(deleteExtra(e));
     case 'deleteLog':          return respond(deleteLogRow(e));
     case 'deleteTrans':        return respond(deleteTransRow(e));
-    case 'getStudentLogs':     return respond(getStudentLogs(e));
     case 'resetScore':         return respond(resetStudentScore(e));
     case 'resetAllScores':     return respond(resetAllStudentScores());
     case 'setupStudentSheets': return respond(setupStudentSheets(e));
