@@ -281,6 +281,36 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
   background:var(--paper);outline:none;}
 .roster-input-row input:focus{border-color:var(--navy);}
 
+
+/* ── Tier Overview ── */
+.tier-overview{background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px 24px;box-shadow:var(--shadow);margin-bottom:24px;}
+.tier-overview-title{font-family:'Nanum Myeongjo',serif;font-size:1rem;font-weight:800;
+  color:var(--navy);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.tier-overview-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.tier-table{width:100%;border-collapse:collapse;}
+.tier-table th{font-size:.73rem;font-weight:700;color:var(--muted);padding:6px 10px;
+  text-align:left;border-bottom:2px solid var(--border);white-space:nowrap;}
+.tier-table th.right,.tier-table td.right{text-align:right;}
+.tier-table td{padding:8px 10px;font-size:.84rem;border-bottom:1px solid var(--border);
+  vertical-align:middle;}
+.tier-table tr:last-child td{border-bottom:none;}
+.tier-table tr.tier-row-current{background:var(--amber-pale);}
+.tier-icon-cell{display:flex;align-items:center;gap:8px;}
+.tier-icon-cell svg{flex-shrink:0;}
+.tier-name-text{font-weight:700;}
+.tier-range{font-size:.72rem;color:var(--muted);margin-top:1px;}
+.tier-count-badge{display:inline-block;font-size:.72rem;font-weight:700;
+  padding:2px 9px;border-radius:12px;white-space:nowrap;}
+.tier-progress-cell{min-width:90px;}
+.tier-bar-row{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;}
+.tier-bar-row-fill{height:100%;border-radius:3px;}
+.tier-pct-text{font-size:.7rem;color:var(--muted);margin-top:2px;}
+
+/* 학생 카드에 다음 티어 정보 */
+.tier-next-info{font-size:.72rem;color:var(--muted);margin-top:3px;}
+.tier-next-info.close{color:#e65c00;font-weight:700;}
+
 .watermark{position:fixed;bottom:10px;right:14px;font-size:.68rem;
   color:rgba(100,90,70,.4);pointer-events:none;z-index:999;}
 
@@ -520,6 +550,10 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
   <!-- STUDENTS -->
   <div class="tab-panel" id="panel-students">
   <div class="container">
+    <p class="section-title">🏅 티어 현황</p>
+    <div class="tier-overview">
+      <div id="tierOverviewTable"><div class="loading"><div class="spinner"></div>불러오는 중...</div></div>
+    </div>
     <p class="section-title">👥 학생 현황 — 점수 순위</p>
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
       <select id="resetStudentSelect" style="font-family:'Nanum Gothic',sans-serif;font-size:.85rem;border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--paper);outline:none;min-width:200px;">
@@ -1563,32 +1597,90 @@ function renderExtraList(){
     </div>`).join('');
 }
 
+// ══ TIER OVERVIEW TABLE ══
+function renderTierOverview(){
+  const el=document.getElementById('tierOverviewTable');
+  if(!el)return;
+  const totalStudents=Object.keys(studentScores).length;
+  if(!totalStudents){
+    el.innerHTML='<div style="color:var(--muted);font-size:.85rem;padding:10px 0;">학생 데이터가 없습니다.</div>';
+    return;
+  }
+  // 티어별 학생 집계
+  const tierCounts={};
+  TIERS.forEach(t=>tierCounts[t.name]=0);
+  Object.values(studentScores).forEach(info=>{
+    const t=getTier(info.score);
+    tierCounts[t.name]=(tierCounts[t.name]||0)+1;
+  });
+  const rows=TIERS.slice().reverse().map(t=>{
+    const cnt=tierCounts[t.name]||0;
+    const pct=totalStudents>0?Math.round(cnt/totalStudents*100):0;
+    const rangeText=t.next?t.min+'~'+(t.next-1)+'점':t.min+'점 이상';
+    const badgeBg=t.color+'22';
+    return '<tr>'
+      +'<td><div class="tier-icon-cell">'+getTierSVG(t.name,28)+'<div>'
+        +'<div class="tier-name-text" style="color:'+t.color+'">'+t.name+'</div>'
+        +'<div class="tier-range">'+rangeText+'</div>'
+      +'</div></div></td>'
+      +'<td class="right"><span class="tier-count-badge" style="background:'+badgeBg+';color:'+t.color+';border:1px solid '+t.color+'40;">'+cnt+'명</span></td>'
+      +'<td class="right" style="font-size:.8rem;color:var(--muted);">'+pct+'%</td>'
+      +'<td class="tier-progress-cell">'
+        +'<div class="tier-bar-row"><div class="tier-bar-row-fill" style="width:'+pct+'%;background:'+t.color+';"></div></div>'
+        +'<div class="tier-pct-text">전체 '+totalStudents+'명</div>'
+      +'</td>'
+    +'</tr>';
+  }).join('');
+  el.innerHTML='<table class="tier-table">'
+    +'<thead><tr>'
+      +'<th>티어</th>'
+      +'<th class="right">학생 수</th>'
+      +'<th class="right">비율</th>'
+      +'<th>분포</th>'
+    +'</tr></thead>'
+    +'<tbody>'+rows+'</tbody>'
+  +'</table>';
+}
+
 // ══ LEADERBOARD ══
 function renderLeaderboard(){
+  renderTierOverview();
   const el=document.getElementById('leaderGrid');
   const sorted=Object.entries(studentScores).sort((a,b)=>b[1].score-a[1].score);
   // 드롭다운 업데이트
   const sel=document.getElementById('resetStudentSelect');
   if(sel){
-    sel.innerHTML=`<option value="">학생 선택...</option>`+sorted.map(([name])=>`<option value="${esc(name)}">${esc(name)}</option>`).join('');
+    sel.innerHTML='<option value="">학생 선택...</option>'+sorted.map(function(item){return '<option value="'+esc(item[0])+'">'+esc(item[0])+'</option>';}).join('');
   }
-  if(!sorted.length){el.innerHTML=`<div class="empty"><div class="empty-icon">👥</div><p>학생 데이터가 없습니다.</p></div>`;return;}
-  el.innerHTML=sorted.map(([name,info],i)=>{
-    const tier=getTier(info.score);
-    const pct=tier.next?Math.min(100,(info.score-tier.min)/(tier.next-tier.min)*100):100;
-    return `<div class="leader-card">
-      <div class="leader-rank ${i===0?'r1':i===1?'r2':i===2?'r3':''}">${i+1}</div>
-      <div class="leader-tier">${getTierSVG(tier.name,44)}</div>
-      <div class="leader-info">
-        <div class="leader-name">${esc(name)}</div>
-        <div class="leader-stats">${tier.name} · 독서록 ${info.logCount}편 중 ${info.gradedCount}편 채점</div>
-        <div class="tier-bar-mini"><div class="tier-bar-fill" style="width:${pct}%;background:${tier.color};"></div></div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-        <div class="leader-score">${info.score}점</div>
-        <button class="btn btn-danger btn-sm" style="font-size:.72rem;padding:4px 10px;" onclick="resetStudentScoreByName('${esc(name)}')">초기화</button>
-      </div>
-    </div>`;
+  if(!sorted.length){el.innerHTML='<div class="empty"><div class="empty-icon">👥</div><p>학생 데이터가 없습니다.</p></div>';return;}
+  el.innerHTML=sorted.map(function(item,i){
+    var name=item[0];var info=item[1];
+    var tier=getTier(info.score);
+    var pct=tier.next?Math.min(100,(info.score-tier.min)/(tier.next-tier.min)*100):100;
+    var nextGap=tier.next?tier.next-info.score:0;
+    var nextTierIdx=TIERS.findIndex(function(t){return t.name===tier.name;});
+    var nextTier=nextTierIdx<TIERS.length-1?TIERS[nextTierIdx+1]:null;
+    var nextInfo='';
+    if(nextTier){
+      nextInfo='<div class="tier-next-info'+(nextGap<=10?' close':'')+'">'+
+        (nextGap<=10?'🔥 ':'')+'다음 티어('+nextTier.name+')까지 '+nextGap+'점</div>';
+    }else{
+      nextInfo='<div class="tier-next-info" style="color:var(--amber);font-weight:700;">👑 최고 티어!</div>';
+    }
+    return '<div class="leader-card">'
+      +'<div class="leader-rank '+(i===0?'r1':i===1?'r2':i===2?'r3':'')+'">'+(i+1)+'</div>'
+      +'<div class="leader-tier">'+getTierSVG(tier.name,44)+'</div>'
+      +'<div class="leader-info">'
+        +'<div class="leader-name">'+esc(name)+'</div>'
+        +'<div class="leader-stats">'+tier.name+' · 독서록 '+info.logCount+'편 중 '+info.gradedCount+'편 채점</div>'
+        +nextInfo
+        +'<div class="tier-bar-mini"><div class="tier-bar-fill" style="width:'+pct+'%;background:'+tier.color+';"></div></div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
+        +'<div class="leader-score">'+info.score+'점</div>'
+        +'<button class="btn btn-danger btn-sm" style="font-size:.72rem;padding:4px 10px;" data-sname="'+esc(name)+'" onclick="resetStudentScoreByName(this.dataset.sname)">초기화</button>'
+      +'</div>'
+    +'</div>';
   }).join('');
 }
 
