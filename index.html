@@ -109,14 +109,6 @@ header{background:var(--navy);color:#fff;padding:16px 28px;display:flex;align-it
 .badge{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:16px;white-space:nowrap;}
 .badge-ng{background:#fef3c7;color:#92400e;border:1px solid #f59e0b;}
 .badge-graded{background:#d1fae5;color:#065f46;border:1px solid #34d399;}
-.badge-rejected{background:#fde8e8;color:#c0392b;border:1px solid #f5a0a0;}
-.btn-reject{background:#fff0f0;color:#c0392b;border:1.5px solid #e0a0a0;border-radius:8px;padding:4px 12px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;}
-.btn-reject:hover{background:#c0392b;color:#fff;}
-.reject-panel{display:none;margin-top:10px;background:#fff5f5;border:1.5px solid #f5a0a0;border-radius:10px;padding:12px;}
-.reject-panel.open{display:block;}
-.reject-panel textarea{width:100%;box-sizing:border-box;border:1px solid #e0a0a0;border-radius:7px;padding:8px;font-size:.85rem;resize:vertical;min-height:60px;font-family:inherit;}
-.reject-panel .rp-label{font-size:.82rem;font-weight:700;color:#c0392b;margin-bottom:6px;}
-.log-card.rejected{background:#fff5f5;border-color:#f5a0a0;}
 .badge-genre{background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;}
 
 /* Grading panel */
@@ -425,7 +417,6 @@ pre.code{font-size:.72rem;background:#1a2744;color:#f0e6cc;padding:16px;border-r
         <option value="">전체 상태</option>
         <option value="ungraded">미채점만</option>
         <option value="graded">채점완료만</option>
-        <option value="rejected">반송만</option>
       </select>
       <input type="text" id="filterSearch" placeholder="책 제목 검색..." oninput="applyFilter()">
       <button class="btn btn-secondary btn-sm" onclick="loadAll()">🔄 새로고침</button>
@@ -1140,22 +1131,24 @@ function buildStudentScores(){
 }
 
 function updateHeaderChips(){
-  const ungraded=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).length;
+  // 반송(rejected) 제외하고 미채점 집계
+  const ungraded=allLogs.filter(l=>(l.score===''||l.score===null||l.score===undefined)&&l.status!=='rejected').length;
   const students=Object.keys(studentScores).length;
-  const transUngraded=allTranscriptions.filter(t=>t.score===''||t.score===null||t.score===undefined).length;
+  const transUngraded=allTranscriptions.filter(t=>(t.score===''||t.score===null||t.score===undefined)&&t.status!=='rejected').length;
   document.getElementById('chipUngraded').textContent=ungraded;
   document.getElementById('chipStudents').textContent=students;
   const badge=document.getElementById('gradeBadge');
   if(ungraded>0){badge.textContent=ungraded;badge.style.display='inline';}else badge.style.display='none';
   const tbadge=document.getElementById('transBadge');
-  if(transUngraded>0){tbadge.textContent=transUngraded;tbadge.style.display='inline';}else tbadge.style.display='none';
+  if(tbadge){if(transUngraded>0){tbadge.textContent=transUngraded;tbadge.style.display='inline';}else tbadge.style.display='none';}
 }
 
 // ══ DASHBOARD ══
 function renderDashboard(){
   const total=allLogs.length;
-  const ungraded=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).length;
-  const graded=total-ungraded;
+  const ungraded=allLogs.filter(l=>(l.score===''||l.score===null||l.score===undefined)&&l.status!=='rejected').length;
+  const rejected=allLogs.filter(l=>l.status==='rejected').length;
+  const graded=total-ungraded-rejected;
   const students=Object.keys(studentScores).length;
   const extras=extraData.length;
 
@@ -1186,7 +1179,7 @@ function renderDashboard(){
     </div>`;
 
   // Ungraded list (최신순 5개) - 대시보드는 링크만, 채점은 채점 탭에서
-  const ungradedLogs=allLogs.filter(l=>l.score===''||l.score===null||l.score===undefined).slice(0,5);
+  const ungradedLogs=allLogs.filter(l=>(l.score===''||l.score===null||l.score===undefined)&&l.status!=='rejected').slice(0,5);
   const dU=document.getElementById('dashUngraded');
   if(!ungradedLogs.length){
     dU.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><p>미채점 독서록이 없습니다!</p></div>`;
@@ -1435,14 +1428,9 @@ function closeBVModal(){document.getElementById('bvModal').classList.remove('ope
 // ══ LOG LIST ══
 function logCardHTML(l,compact=false){
   const isUngraded=l.score===''||l.score===null||l.score===undefined;
-  const isRejected=l.status==='rejected';
   const period=l.startDate?(l.startDate===l.endDate?l.startDate:`${l.startDate}~${l.endDate||''}`):'';
   const stars='⭐'.repeat(Number(l.stars)||0)||'—';
-  let badgeHTML;
-  if(isRejected) badgeHTML=`<span class="badge badge-rejected">🔴 반송됨</span>`;
-  else if(isUngraded) badgeHTML=`<span class="badge badge-ng">🔔 미채점</span>`;
-  else badgeHTML=`<span class="badge badge-graded">✅ ${l.score}점</span>`;
-  return `<div class="log-card${isRejected?' rejected':isUngraded?' ungraded':''}" id="lc_${l.row}">
+  return `<div class="log-card${isUngraded?' ungraded':''}" id="lc_${l.row}">
     <div class="log-card-top">
       <div>
         <div class="log-student">${esc(l.student)}</div>
@@ -1450,11 +1438,10 @@ function logCardHTML(l,compact=false){
         <div class="log-meta">${period}${l.genre?' · '+esc(l.genre):''}${l.sentAt?' · 제출: '+l.sentAt.substring(0,10):''}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
-        ${badgeHTML}
+        <span class="badge ${isUngraded?'badge-ng':'badge-graded'}">${isUngraded?'🔔 미채점':'✅ '+l.score+'점'}</span>
         ${l.genre?`<span class="badge badge-genre">${esc(l.genre)}</span>`:''}
       </div>
     </div>
-    ${isRejected&&l.comment?`<div style="margin:6px 0 2px;padding:8px 12px;background:#fff0f0;border-left:4px solid #e74c3c;border-radius:6px;font-size:.82rem;color:#c0392b;">🔴 반송 사유: ${esc(l.comment)}</div>`:''}
     ${!compact?`<div class="log-preview" id="prev_${l.row}">${esc((l.content||'').substring(0,200))}${(l.content||'').length>200?'…':''}</div>`:''}
     <div class="log-footer">
       <span class="stars">${stars}</span>
@@ -1462,9 +1449,8 @@ function logCardHTML(l,compact=false){
     </div>
     <div class="card-actions">
       ${!compact?`<button class="btn btn-ghost btn-sm" onclick="toggleContent('${l.row}')">📖 전체 보기</button>`:''}
-      <button class="btn btn-primary btn-sm" onclick="toggleGrade('${l.row}')">✏️ ${isUngraded||isRejected?'채점하기':'수정'}</button>
-      ${!isUngraded&&!isRejected?`<span style="font-size:.78rem;color:var(--muted);">코멘트: ${esc(l.comment||'—')}</span>`:''}
-      <button class="btn-reject" onclick="toggleReject('${l.row}')">${isRejected?'🔴 반송 수정':'🔴 반송'}</button>
+      <button class="btn btn-primary btn-sm" onclick="toggleGrade('${l.row}')">✏️ ${isUngraded?'채점하기':'수정'}</button>
+      ${!isUngraded?`<span style="font-size:.78rem;color:var(--muted);">코멘트: ${esc(l.comment||'—')}</span>`:''}
     </div>
     <div class="grade-panel" id="gp_${l.row}">
       <div class="grade-row">
@@ -1479,15 +1465,6 @@ function logCardHTML(l,compact=false){
         <span class="grade-saved" id="saved_${l.row}">✅ 저장됨</span>
       </div>
     </div>
-    <div class="reject-panel" id="rp_${l.row}">
-      <div class="rp-label">🔴 반송 사유 입력 — 학생이 점수 불러오기 시 확인합니다</div>
-      <textarea id="rt_${l.row}" placeholder="예: 내용이 너무 짧습니다. 150자 이상 다시 작성해 주세요.">${isRejected?esc(l.comment||''):''}</textarea>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button class="btn btn-reject" onclick="submitReject('${l.row}')">📤 반송 전송</button>
-        <button class="btn btn-ghost btn-sm" onclick="toggleReject('${l.row}')">취소</button>
-        <span class="grade-saved" id="rsaved_${l.row}">🔴 반송 완료</span>
-      </div>
-    </div>
   </div>`;
 }
 
@@ -1498,10 +1475,12 @@ function applyFilter(){
   const search=safeLower(document.getElementById('filterSearch').value);
   filteredLogs=allLogs.filter(l=>{
     if(student&&l.student!==student)return false;
-    const ungraded=l.score===''||l.score===null||l.score===undefined;
     const isRejected=l.status==='rejected';
+    const ungraded=(l.score===''||l.score===null||l.score===undefined)&&!isRejected;
+    // 반송 항목: '반송만' 필터일 때만 표시, 기본(전체)·미채점·채점완료에서는 숨김
+    if(status===''&&isRejected)return false;
     if(status==='ungraded'&&!ungraded)return false;
-    if(status==='graded'&&ungraded)return false;
+    if(status==='graded'&&(ungraded||isRejected))return false;
     if(status==='rejected'&&!isRejected)return false;
     if(search&&!safeLower(l.title).includes(search)&&!safeLower(l.student).includes(search))return false;
     return true;
@@ -1512,11 +1491,12 @@ function applyFilter(){
   el.innerHTML=filteredLogs.map(l=>logCardHTML(l)).join('');
 }
 function renderLogList(){
-  filteredLogs=[...allLogs];
-  document.getElementById('filterCount').textContent=`${allLogs.length}건`;
+  // 반송 항목은 기본 목록에서 제외 (필터로만 볼 수 있음)
+  filteredLogs=allLogs.filter(l=>l.status!=='rejected');
+  document.getElementById('filterCount').textContent=`${filteredLogs.length}건`;
   const el=document.getElementById('logList');
-  if(!allLogs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>제출된 독서록이 없습니다.</p></div>`;return;}
-  el.innerHTML=allLogs.map(l=>logCardHTML(l)).join('');
+  if(!filteredLogs.length){el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>제출된 독서록이 없습니다.</p></div>`;return;}
+  el.innerHTML=filteredLogs.map(l=>logCardHTML(l)).join('');
 }
 function updateFilterStudents(){
   const names=[...new Set(allLogs.map(l=>l.student).filter(Boolean))].sort();
@@ -1536,52 +1516,6 @@ function toggleContent(row){
 function toggleGrade(row){
   const gp=document.getElementById('gp_'+row);
   if(gp)gp.classList.toggle('open');
-}
-function toggleReject(row){
-  const rp=document.getElementById('rp_'+row);
-  if(!rp)return;
-  // 채점 패널이 열려 있으면 닫기
-  const gp=document.getElementById('gp_'+row);
-  if(gp)gp.classList.remove('open');
-  rp.classList.toggle('open');
-  if(rp.classList.contains('open')){
-    const ta=document.getElementById('rt_'+row);
-    if(ta)ta.focus();
-  }
-}
-async function submitReject(row){
-  const reason=(document.getElementById('rt_'+row)||{}).value||'';
-  if(!reason.trim()){showToast('❌ 반송 사유를 입력해주세요.','error');return;}
-  const log=allLogs.find(l=>String(l.row)===String(row));
-  if(!log){showToast('❌ 해당 독서록을 찾을 수 없습니다.','error');return;}
-  if(!confirm(`"${log.student}" 학생의 독서록을 반송하시겠습니까?\n사유: ${reason}`))return;
-  const btn=document.querySelector(`#rp_${row} .btn-reject`);
-  if(btn){btn.disabled=true;btn.textContent='📡 전송 중...';}
-  try{
-    const res=await jsonpFetch(`${cfg.url}?mode=rejectLog&pw=${encodeURIComponent(cfg.pw)}&row=${encodeURIComponent(row)}&student=${encodeURIComponent(log.student||'')}&id=${encodeURIComponent(log.id||'')}&title=${encodeURIComponent(log.title||'')}&comment=${encodeURIComponent(reason)}`);
-    if(res&&res.result==='ok'){
-      // 로컬 상태 업데이트
-      log.status='rejected';
-      log.comment=reason;
-      log.score='';
-      // 카드 배지·배경 교체
-      const card=document.getElementById('lc_'+row);
-      if(card){
-        card.classList.remove('ungraded');
-        card.classList.add('rejected');
-        const badge=card.querySelector('.badge');
-        if(badge){badge.className='badge badge-rejected';badge.textContent='🔴 반송됨';}
-      }
-      const saved=document.getElementById('rsaved_'+row);
-      if(saved){saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2500);}
-      document.getElementById('rp_'+row).classList.remove('open');
-      buildStudentScores();updateHeaderChips();
-      showToast('🔴 반송 처리 완료! 학생이 점수 불러오기 시 확인합니다.','success');
-    }else{
-      showToast('❌ 반송 실패: '+(res&&res.message?res.message:'Apps Script 오류'),'error');
-    }
-  }catch(e){showToast('❌ 오류: '+e.message,'error');}
-  finally{if(btn){btn.disabled=false;btn.textContent='📤 반송 전송';}}
 }
 
 // ══ SUBMIT GRADE ══
