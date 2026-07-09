@@ -836,7 +836,7 @@ function normalizePayloadArray(data,normalizer){
   return [];
 }
 function normalizeAllLocalData(){
-  allLogs=normalizePayloadArray(allLogs,normalizeLog);
+  allLogs=normalizePayloadArray(allLogs,normalizeLog).filter(l=>l.status!=='rejected');
   allTranscriptions=normalizePayloadArray(allTranscriptions,normalizeTranscription);
   extraData=normalizePayloadArray(extraData,normalizeExtra);
   roster=Array.isArray(roster)?roster.map(normalizeRosterItem):[];
@@ -1099,7 +1099,7 @@ async function loadAll(){
       jsonpFetch(cfg.url+'?mode=all&pw='+encodeURIComponent(cfg.pw)),
       jsonpFetch(cfg.url+'?mode=extras&pw='+encodeURIComponent(cfg.pw))
     ]);
-    allLogs=normalizePayloadArray(allData,normalizeLog);
+    allLogs=normalizePayloadArray(allData,normalizeLog).filter(l=>l.status!=='rejected');
     // 필사는 allTrans로 별도 조회 (구분 열로 서버에서 분리됨)
     const transData=await jsonpFetch(cfg.url+'?mode=allTrans&pw='+encodeURIComponent(cfg.pw));
     allTranscriptions=normalizePayloadArray(transData,normalizeTranscription);
